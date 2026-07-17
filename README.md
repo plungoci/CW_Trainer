@@ -7,8 +7,9 @@ feedback imediat.
 ## Funcționare
 
 1. La pornire, ecranul afișează viteza configurată (implicit **15 WPM**).
-2. Dispozitivul alege aleatoriu una dintre literele `A`–`Z`, afișează pe LCD
-   litera și codul Morse care urmează să fie ascultat, apoi îl redă la 700 Hz.
+2. Dispozitivul alege aleatoriu un caracter din setul `A`–`Z` și `0`–`9`,
+   afișează pe LCD caracterul și codul Morse care urmează să fie ascultat, apoi
+   îl redă la 700 Hz.
 3. Apăsați cheia pentru a reproduce codul auzit:
    - o apăsare mai scurtă de două unități de timp este un punct;
    - o apăsare mai lungă este o linie;
@@ -69,8 +70,17 @@ Parametrii principali se află la începutul fișierului `cw_trainer.ino`:
 | `wpm` | `15` | Viteza de antrenament; durata punctului este calculată ca `1200 / wpm`. |
 | `answerTimeout` | `10000` ms | Timpul maxim pentru a începe răspunsul. |
 
-În forma actuală, exercițiile folosesc doar literele `A`–`Z`, deși tabelul de
-coduri include și cifrele `0`–`9` pentru extinderi ulterioare.
+### Setul de exerciții
+
+Fiecare rundă poate conține una dintre cele **36 de caractere** de mai jos:
+
+- literele `A`–`Z`;
+- cifrele `0`–`9`.
+
+Selecția aleatorie folosește automat dimensiunea setului de caractere definit
+în schiță, astfel încât toate literele și cifrele au aceeași șansă de a apărea.
+Cifrele folosesc codurile Morse internaționale de cinci semne: de exemplu,
+`0` este `-----`, `5` este `.....`, iar `9` este `----.`.
 
 ## Depanare
 
