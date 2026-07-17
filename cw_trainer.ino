@@ -10,7 +10,7 @@ const byte buzzerPin = 8;
 const byte keyPin = 7;
 
 // Parametri CW
-const unsigned int cwFrequency = 1000;
+const unsigned int cwFrequency = 700;
 const byte wpm = 15;
 
 // Durata punctului în milisecunde
