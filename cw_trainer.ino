@@ -275,7 +275,9 @@ void loop() {
   lcd.print("Asculta...");
 
   lcd.setCursor(0, 1);
-  lcd.print("Caracter nou");
+  lcd.print(characters[index]);
+  lcd.print(" = ");
+  lcd.print(morseCodes[index]);
 
   delay(800);
 

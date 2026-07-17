@@ -7,8 +7,8 @@ feedback imediat.
 ## Funcționare
 
 1. La pornire, ecranul afișează viteza configurată (implicit **15 WPM**).
-2. Dispozitivul alege aleatoriu una dintre literele `A`–`Z` și redă codul Morse
-   la 700 Hz.
+2. Dispozitivul alege aleatoriu una dintre literele `A`–`Z`, afișează pe LCD
+   litera și codul Morse care urmează să fie ascultat, apoi îl redă la 700 Hz.
 3. Apăsați cheia pentru a reproduce codul auzit:
    - o apăsare mai scurtă de două unități de timp este un punct;
    - o apăsare mai lungă este o linie;
