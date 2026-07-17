@@ -10,7 +10,7 @@ const byte buzzerPin = 8;
 const byte keyPin = 7;
 
 // Parametri CW
-const unsigned int cwFrequency = 700;
+const unsigned int cwFrequency = 1000;
 const byte wpm = 15;
 
 // Durata punctului în milisecunde
@@ -62,16 +62,16 @@ const char* morseCodes[] = {
   "--..",  // Z
 
   // 0-9
-  "-----", // 0
-  ".----", // 1
-  "..---", // 2
-  "...--", // 3
-  "....-", // 4
-  ".....", // 5
-  "-....", // 6
-  "--...", // 7
-  "---..", // 8
-  "----."  // 9
+  "-----",  // 0
+  ".----",  // 1
+  "..---",  // 2
+  "...--",  // 3
+  "....-",  // 4
+  ".....",  // 5
+  "-....",  // 6
+  "--...",  // 7
+  "---..",  // 8
+  "----."   // 9
 };
 
 void soundOn() {
@@ -178,13 +178,11 @@ bool readUserMorse(char* receivedCode) {
       delay(20);
     }
 
-    if (started &&
-        millis() - lastReleaseTime >= characterTimeout) {
+    if (started && millis() - lastReleaseTime >= characterTimeout) {
       return true;
     }
 
-    if (!started &&
-        millis() - waitingStart >= answerTimeout) {
+    if (!started && millis() - waitingStart >= answerTimeout) {
       return false;
     }
   }
@@ -211,8 +209,7 @@ void errorSound() {
 void showResult(
   char targetCharacter,
   const char* targetCode,
-  const char* receivedCode
-) {
+  const char* receivedCode) {
   lcd.clear();
 
   if (strcmp(targetCode, receivedCode) == 0) {
@@ -248,8 +245,8 @@ void setup() {
   Wire.begin();
 
   // Pentru biblioteca ta se folosește begin(), nu init().
-  lcd.begin();
   lcd.backlight();
+  lcd.begin(16, 2);  // for a 16x2 LCD  lcd.backlight();
 
   randomSeed(analogRead(A0));
 
@@ -293,8 +290,7 @@ void loop() {
     showResult(
       characters[index],
       morseCodes[index],
-      receivedCode
-    );
+      receivedCode);
   } else {
     lcd.clear();
     lcd.setCursor(0, 0);
