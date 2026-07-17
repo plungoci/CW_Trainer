@@ -1,6 +1,6 @@
 # CW Trainer
 
-Un antrenor de telegrafie Morse (CW) pentru Arduino. Schița redă aleatoriu o
+Un antrenor de telegrafie Morse (CW) pentru Arduino Nano sau UNO. Schița redă aleatoriu o
 literă, utilizatorul o reproduce cu o cheie Morse, iar LCD-ul și buzzerul oferă
 feedback imediat.
 
