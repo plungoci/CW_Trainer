@@ -32,6 +32,9 @@ const byte maxMorseLength = 5;
 const char characters[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
+// Numărul de caractere disponibile pentru exerciții.
+const byte characterCount = sizeof(characters) - 1;
+
 const char* morseCodes[] = {
   // A-Z
   ".-",    // A
@@ -264,8 +267,8 @@ void setup() {
 void loop() {
   char receivedCode[maxMorseLength + 1];
 
-  // Alege aleatoriu o literă A-Z.
-  int index = random(0, 26);
+  // Alege aleatoriu o literă sau o cifră disponibilă.
+  int index = random(0, characterCount);
 
   lcd.clear();
   lcd.setCursor(0, 0);
