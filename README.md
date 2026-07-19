@@ -27,6 +27,7 @@ LCD-ul și buzzerul oferă feedback imediat.
 | 1 | [Buton fără reținere, NO, roșu, F22 mm](https://www.emag.ro/buton-de-pornire-fara-blocare-no-rosu-f22mm-05718/pd/DJTBGF3BM/) | Contact normal deschis; se conectează între D7 și GND și înlocuiește cheia Morse. |
 | 1 | Breadboard | Opțional, pentru prototipare. |
 | 1 set | Fire jumper | Pentru toate conexiunile. |
+| 6 | Șurub M3 × 6 mm | Pentru fixarea componentelor în carcasă. |
 | 1 | Cablu USB-A–USB-C sau USB-C–USB-C | Pentru programarea și alimentarea plăcii Nano. |
 
 Nu este necesară o rezistență de pull-up pentru cheie: schița activează
