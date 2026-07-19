@@ -9,8 +9,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 const byte buzzerPin = 8;
 const byte keyPin = 7;
 
-// Parametri CW
-const unsigned int cwFrequency = 700;
+// Buzzerul activ are oscilator intern: este pornit/oprit digital.
 const byte wpm = 15;
 
 // Durata punctului în milisecunde
@@ -78,11 +77,11 @@ const char* morseCodes[] = {
 };
 
 void soundOn() {
-  tone(buzzerPin, cwFrequency);
+  digitalWrite(buzzerPin, HIGH);
 }
 
 void soundOff() {
-  noTone(buzzerPin);
+  digitalWrite(buzzerPin, LOW);
 }
 
 void playDot() {
@@ -192,21 +191,21 @@ bool readUserMorse(char* receivedCode) {
 }
 
 void correctSound() {
-  tone(buzzerPin, 1000);
+  soundOn();
   delay(100);
-  noTone(buzzerPin);
+  soundOff();
 
   delay(80);
 
-  tone(buzzerPin, 1300);
+  soundOn();
   delay(150);
-  noTone(buzzerPin);
+  soundOff();
 }
 
 void errorSound() {
-  tone(buzzerPin, 300);
+  soundOn();
   delay(400);
-  noTone(buzzerPin);
+  soundOff();
 }
 
 void showResult(
