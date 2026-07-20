@@ -120,6 +120,21 @@ void waitForKeyRelease() {
   delay(30);
 }
 
+// Testul începe numai după o apăsare intenționată a cheii.
+void waitForTestStart() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Apasa butonul");
+  lcd.setCursor(0, 1);
+  lcd.print("pentru start");
+
+  while (digitalRead(keyPin) == HIGH) {
+    delay(5);
+  }
+
+  waitForKeyRelease();
+}
+
 void clearSecondLine() {
   lcd.setCursor(0, 1);
   lcd.print("                ");
@@ -261,6 +276,8 @@ void setup() {
   lcd.print(" WPM");
 
   delay(2500);
+
+  waitForTestStart();
 }
 
 void loop() {

@@ -20,8 +20,9 @@ oferă feedback imediat.
 
 ### Cum funcționează
 
-1. La pornire, ecranul afișează viteza configurată (**15 WPM** implicit).
-2. Dispozitivul alege un caracter dintre `A`–`Z` și `0`–`9`, îl afișează cu
+1. La pornire, ecranul afișează viteza configurată (**15 WPM** implicit), apoi
+   solicită apăsarea butonului pentru pornirea testului.
+2. După apăsare, dispozitivul alege un caracter dintre `A`–`Z` și `0`–`9`, îl afișează cu
    codul Morse pe LCD și redă ritmul prin buzzer.
 3. Apasă cheia pentru a reproduce codul: o apăsare mai scurtă de două unități
    de timp este un punct, una mai lungă este o linie, iar o pauză de cinci
@@ -125,8 +126,9 @@ and buzzer provide immediate feedback.
 
 ## How it works
 
-1. At startup, the display shows the configured speed (**15 WPM** by default).
-2. The device randomly selects a character from `A`–`Z` and `0`–`9`, displays
+1. At startup, the display shows the configured speed (**15 WPM** by default),
+   then asks you to press the button to start the test.
+2. After the press, the device randomly selects a character from `A`–`Z` and `0`–`9`, displays
    the character and its Morse code on the LCD, and plays its rhythm through the
    buzzer.
 3. Press the key to reproduce the code you heard:
