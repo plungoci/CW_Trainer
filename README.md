@@ -10,7 +10,7 @@ Vedere frontală și vedere în perspectivă ale carcasei CW Trainer, cu buzzeru
 LCD-ul și butonul de acționare montate pe panoul superior.
 
 <p align="center">
-  <img src="images/cw-trainer-front.png" alt="CW Trainer văzut din față" width="48%">
+  <img src="images/2-removebg-preview.png" alt="CW Trainer văzut din față" width="48%">
   <img src="images/cw-trainer-perspective.svg" alt="CW Trainer văzut în perspectivă" width="48%">
 </p>
 
