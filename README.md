@@ -93,6 +93,12 @@ Selecția aleatorie utilizează automat dimensiunea setului de caractere definit
 Cifrele folosesc codurile Morse internaționale din cinci simboluri: de exemplu,
 `0` este `-----`, `5` este `.....`, iar `9` este `----.`.
 
+### De făcut
+
+- Adăugarea funcției de meniu și a butoanelor necesare pentru navigarea în meniu.
+- Adăugarea a două mufe jack pentru o cheie simplă și o cheie automată tip paddle.
+- Refacerea modelului 3D.
+
 ### Depanare
 
 - **LCD gol:** reglează potențiometrul de contrast al modulului și încearcă
@@ -193,6 +199,12 @@ Random selection automatically uses the size of the character set defined in
 the sketch, giving every letter and digit an equal chance of appearing. Digits
 use the five-symbol International Morse codes: for example, `0` is `-----`,
 `5` is `.....`, and `9` is `----.`.
+
+### To-do
+
+- Add a menu function and the buttons needed to navigate the menu.
+- Add two jack sockets for a straight key and an automatic paddle key.
+- Redesign the 3D model.
 
 ## Troubleshooting
 
