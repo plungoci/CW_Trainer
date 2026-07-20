@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">CW Trainer — vedere în perspectivă</title>
+  <desc id="desc">Carcasa neagră a antrenorului CW văzută din față și de sus, cu buzzer, LCD albastru și buton verde.</desc>
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#303233"/>
+      <stop offset="1" stop-color="#191a1b"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#222425"/>
+      <stop offset="1" stop-color="#101112"/>
+    </linearGradient>
+    <radialGradient id="button">
+      <stop stop-color="#45ee72"/>
+      <stop offset=".8" stop-color="#08aa46"/>
+      <stop offset="1" stop-color="#05642b"/>
+    </radialGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#16458e"/>
+      <stop offset="1" stop-color="#06184d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="#000"/>
+  <polygon points="160,190 1000,200 1125,470 78,466" fill="url(#top)" stroke="#a0a095" stroke-width="2"/>
+  <polygon points="78,466 1125,470 1095,620 115,618" fill="url(#front)" stroke="#3b3c3c" stroke-width="2"/>
+  <polygon points="78,466 115,618 66,530" fill="#171819"/>
+  <g transform="translate(292 302) skewX(-8)">
+    <ellipse rx="67" ry="52" fill="#111" stroke="#050505" stroke-width="8"/>
+    <ellipse rx="50" ry="38" fill="none" stroke="#303030" stroke-width="6"/>
+    <ellipse rx="35" ry="26" fill="none" stroke="#292929" stroke-width="5"/>
+    <ellipse rx="19" ry="14" fill="none" stroke="#333" stroke-width="4"/>
+    <ellipse rx="7" ry="6" fill="#151515"/>
+  </g>
+  <polygon points="458,270 805,274 818,371 442,367" fill="#070809" stroke="#010101" stroke-width="9"/>
+  <polygon points="476,288 786,291 796,352 461,349" fill="url(#screen)" stroke="#20345c" stroke-width="3"/>
+  <g transform="translate(943 340) skewX(-8)">
+    <ellipse rx="61" ry="48" fill="#090b0b" stroke="#050505" stroke-width="8"/>
+    <ellipse rx="45" ry="34" fill="url(#button)" stroke="#03401f" stroke-width="3"/>
+  </g>
+</svg>
