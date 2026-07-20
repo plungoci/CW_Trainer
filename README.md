@@ -1,5 +1,60 @@
 # CW Trainer
 
+[Română](#română) · [English](#english)
+
+---
+
+<a id="română"></a>
+
+## Română
+
+Un dispozitiv de antrenament pentru codul Morse (CW), bazat pe Arduino Nano și
+echipat cu USB-C. Schița selectează aleatoriu o literă sau o cifră pe care
+utilizatorul trebuie să o reproducă prin apăsarea unui buton. LCD-ul și buzzerul
+oferă feedback imediat.
+
+### Cum funcționează
+
+1. La pornire, ecranul afișează viteza configurată (**15 WPM** implicit).
+2. Dispozitivul alege un caracter dintre `A`–`Z` și `0`–`9`, îl afișează cu
+   codul Morse pe LCD și redă ritmul prin buzzer.
+3. Apasă cheia pentru a reproduce codul: o apăsare mai scurtă de două unități
+   de timp este un punct, una mai lungă este o linie, iar o pauză de cinci
+   unități finalizează caracterul.
+4. Ecranul afișează `CORECT!`, `GRESIT` sau `Timp expirat`, împreună cu
+   răspunsul așteptat. Răspunsul trebuie început în maximum 10 secunde.
+
+### Componente și conexiuni
+
+Sunt necesare un Arduino Nano V3.0 compatibil cu USB-C, un LCD verde 1602
+IIC/I²C, un buzzer piezoelectric activ de 3–24 V, un buton momentan normal
+deschis, fire jumper și, opțional, un breadboard. Buzzerul se conectează la D8
+și GND, iar butonul între D7 și GND. LCD-ul folosește 5V, GND, A4/SDA și
+A5/SCL. Nu este necesară o rezistență de pull-up externă: schița utilizează
+`INPUT_PULLUP`.
+
+### Instalare, configurare și depanare
+
+1. Instalează [Arduino IDE](https://www.arduino.cc/en/software) și, din Library
+   Manager, biblioteca **LiquidCrystal I2C**. Biblioteca `Wire` este inclusă în
+   Arduino IDE.
+2. Deschide `cw_trainer.ino`, selectează placa și portul serial corecte din
+   meniul **Tools**, apoi compilează și încarcă schița.
+3. Poți modifica `buzzerPin`, `keyPin`, `wpm` și `answerTimeout` la începutul
+   fișierului. Durata punctului este calculată ca `1200 / wpm`.
+
+Fiecare rundă utilizează aleatoriu una dintre cele **36 de caractere**: literele
+`A`–`Z` și cifrele `0`–`9`. Dacă LCD-ul rămâne gol, reglează potențiometrul de
+contrast și încearcă adresa `0x3F` în loc de `0x27`. Dacă butonul funcționează
+invers, verifică legătura D7–GND; pentru buzzer, verifică polaritatea și faptul
+că este un model activ cu oscilator intern.
+
+---
+
+<a id="english"></a>
+
+## English
+
 An Arduino Nano–based Morse code (CW) trainer with USB-C. The sketch randomly
 selects a letter or digit for the user to reproduce with a button, while the LCD
 and buzzer provide immediate feedback.
