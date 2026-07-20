@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">CW Trainer — vedere frontală</title>
+  <desc id="desc">Carcasa neagră a antrenorului CW, cu buzzer, afișaj LCD albastru și buton verde.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#2e3031"/>
+      <stop offset="1" stop-color="#151617"/>
+    </linearGradient>
+    <radialGradient id="button">
+      <stop stop-color="#48f276"/>
+      <stop offset=".8" stop-color="#08a946"/>
+      <stop offset="1" stop-color="#05642b"/>
+    </radialGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#133b80"/>
+      <stop offset="1" stop-color="#06184c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="15" flood-opacity=".6"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="700" fill="#000"/>
+  <g filter="url(#shadow)">
+    <rect x="155" y="170" width="890" height="360" rx="4" fill="url(#panel)" stroke="#8e8e82" stroke-width="2"/>
+    <rect x="450" y="224" width="420" height="134" fill="#08090a" stroke="#010101" stroke-width="10"/>
+    <rect x="469" y="243" width="382" height="96" fill="url(#screen)" stroke="#233051" stroke-width="3"/>
+    <g transform="translate(286 289)">
+      <circle r="70" fill="#111" stroke="#050505" stroke-width="8"/>
+      <circle r="53" fill="none" stroke="#303030" stroke-width="7"/>
+      <circle r="39" fill="none" stroke="#282828" stroke-width="6"/>
+      <circle r="24" fill="none" stroke="#313131" stroke-width="5"/>
+      <circle r="10" fill="#f2cf23"/>
+    </g>
+    <g transform="translate(964 382)">
+      <circle r="64" fill="#0b0c0c" stroke="#050505" stroke-width="8"/>
+      <circle r="48" fill="url(#button)" stroke="#02381b" stroke-width="3"/>
+    </g>
+  </g>
+</svg>

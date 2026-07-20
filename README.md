@@ -4,6 +4,16 @@ Un antrenor de telegrafie Morse (CW) bazat pe un Arduino Nano cu USB-C. Schița
 alege aleatoriu o literă sau cifră, utilizatorul o reproduce cu un buton, iar
 LCD-ul și buzzerul oferă feedback imediat.
 
+## Fotografii
+
+Vedere frontală și vedere în perspectivă ale carcasei CW Trainer, cu buzzerul,
+LCD-ul și butonul de acționare montate pe panoul superior.
+
+<p align="center">
+  <img src="images/cw-trainer-front.svg" alt="CW Trainer văzut din față" width="48%">
+  <img src="images/cw-trainer-perspective.svg" alt="CW Trainer văzut în perspectivă" width="48%">
+</p>
+
 ## Funcționare
 
 1. La pornire, ecranul afișează viteza configurată (implicit **15 WPM**).
