@@ -261,9 +261,8 @@ void setup() {
 
   Wire.begin();
 
-  // Pentru biblioteca ta se folosește begin(), nu init().
+  lcd.begin();
   lcd.backlight();
-  lcd.begin(16, 2);  // for a 16x2 LCD  lcd.backlight();
 
   randomSeed(analogRead(A0));
 
