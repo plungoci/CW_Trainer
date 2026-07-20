@@ -1,95 +1,96 @@
 # CW Trainer
 
-Un antrenor de telegrafie Morse (CW) bazat pe un Arduino Nano cu USB-C. Schița
-alege aleatoriu o literă sau cifră, utilizatorul o reproduce cu un buton, iar
-LCD-ul și buzzerul oferă feedback imediat.
+An Arduino Nano–based Morse code (CW) trainer with USB-C. The sketch randomly
+selects a letter or digit for the user to reproduce with a button, while the LCD
+and buzzer provide immediate feedback.
 
 <p align="center">
-  <img src="images/2-removebg-preview.png" alt="CW Trainer văzut din față" width="48%">
-  <img src="images/cw-trainer-front.png" alt="CW Trainer văzut în perspectivă" width="48%">
+  <img src="images/2-removebg-preview.png" alt="Front view of the CW Trainer" width="48%">
+  <img src="images/cw-trainer-front.png" alt="Perspective view of the CW Trainer" width="48%">
 </p>
 
-## Funcționare
+## How it works
 
-1. La pornire, ecranul afișează viteza configurată (implicit **15 WPM**).
-2. Dispozitivul alege aleatoriu un caracter din setul `A`–`Z` și `0`–`9`,
-   afișează pe LCD caracterul și codul Morse, apoi redă ritmul acestuia prin
+1. At startup, the display shows the configured speed (**15 WPM** by default).
+2. The device randomly selects a character from `A`–`Z` and `0`–`9`, displays
+   the character and its Morse code on the LCD, and plays its rhythm through the
    buzzer.
-3. Apăsați cheia pentru a reproduce codul auzit:
-   - o apăsare mai scurtă de două unități de timp este un punct;
-   - o apăsare mai lungă este o linie;
-   - o pauză de cinci unități de timp încheie caracterul.
-4. Ecranul arată `CORECT!`, `GRESIT` sau `Timp expirat`, împreună cu răspunsul
-   așteptat. Răspunsul trebuie început în cel mult 10 secunde.
+3. Press the key to reproduce the code you heard:
+   - a press shorter than two time units is a dot;
+   - a longer press is a dash;
+   - a five-time-unit pause completes the character.
+4. The display shows `CORECT!`, `GRESIT`, or `Timp expirat`, together with the
+   expected answer. The response must start within 10 seconds.
 
-## BOM (Bill of Materials)
+## Bill of materials
 
-| Cantitate | Componentă | Specificație / observații |
+| Quantity | Component | Specification / notes |
 | ---: | --- | --- |
-| 1 | [Arduino Nano V3.0 compatibil, USB-C](https://www.emag.ro/modul-nano-v3-0-cu-usb-c-compatibil-cu-arduino-arduino-nano-328-usbc/pd/DVW798MBM/) | Placă compatibilă Arduino Nano, cu ATmega328P și conector USB-C. |
-| 1 | [LCD 1602 IIC/I²C verde](https://www.emag.ro/ecran-lcd-1602-iic-i2c-verde-ai849/pd/D9WQLTMBM/) | Afișaj 16×2 cu I²C, compatibil `LiquidCrystal_I2C`; adresa implicită din schiță este `0x27`. |
-| 1 | [Buzzer piezoelectric activ 3–24 V HND-2312](https://www.emag.ro/buzzer-piezoelectric-activ-3-24v-hnd-2312-sjduen-buzzer-hnd-2312/pd/DSK1PD2BM/) | Se conectează la D8 și GND. Are oscilator intern, deci schița îl pornește/oprește pentru a reda ritmul Morse. |
-| 1 | [Buton fără reținere, NO, roșu, F22 mm](https://www.emag.ro/buton-de-pornire-fara-blocare-no-rosu-f22mm-05718/pd/DJTBGF3BM/) | Contact normal deschis; se conectează între D7 și GND și înlocuiește cheia Morse. |
-| 1 | Breadboard | Opțional, pentru prototipare. |
-| 1 set | Fire jumper | Pentru toate conexiunile. |
-| 6 | Șurub M3 × 6 mm | Pentru fixarea componentelor în carcasă. |
-| 1 | Cablu USB-A–USB-C sau USB-C–USB-C | Pentru programarea și alimentarea plăcii Nano. |
+| 1 | [Arduino Nano V3.0 compatible, USB-C](https://www.emag.ro/modul-nano-v3-0-cu-usb-c-compatibil-cu-arduino-arduino-nano-328-usbc/pd/DVW798MBM/) | Arduino Nano-compatible board with an ATmega328P and USB-C connector. |
+| 1 | [Green LCD 1602 IIC/I²C](https://www.emag.ro/ecran-lcd-1602-iic-i2c-verde-ai849/pd/D9WQLTMBM/) | 16×2 I²C display compatible with `LiquidCrystal_I2C`; the sketch uses `0x27` as its default address. |
+| 1 | [Active piezo buzzer, 3–24 V HND-2312](https://www.emag.ro/buzzer-piezoelectric-activ-3-24v-hnd-2312-sjduen-buzzer-hnd-2312/pd/DSK1PD2BM/) | Connects to D8 and GND. Its internal oscillator lets the sketch turn it on and off to play the Morse rhythm. |
+| 1 | [Momentary, normally open red button, F22 mm](https://www.emag.ro/buton-de-pornire-fara-blocare-no-rosu-f22mm-05718/pd/DJTBGF3BM/) | Connects between D7 and GND and serves as the Morse key. |
+| 1 | Breadboard | Optional, for prototyping. |
+| 1 set | Jumper wires | For all connections. |
+| 6 | M3 × 6 mm screws | For securing components in the enclosure. |
+| 1 | USB-A–to–USB-C or USB-C–to–USB-C cable | For programming and powering the Nano board. |
 
-Nu este necesară o rezistență de pull-up pentru cheie: schița activează
-rezistența internă cu `INPUT_PULLUP`.
+No pull-up resistor is required for the key: the sketch enables the internal
+resistor with `INPUT_PULLUP`.
 
-## Conexiuni
+## Connections
 
-| Modul / semnal | Arduino Nano | Note |
+| Module / signal | Arduino Nano | Notes |
 | --- | --- | --- |
-| LCD VCC | 5V | Verificați tensiunea modulului LCD. |
-| LCD GND | GND | Masă comună. |
-| LCD SDA | A4 / SDA | Magistrala I²C. |
-| LCD SCL | A5 / SCL | Magistrala I²C. |
-| Buzzer `+` | D8 | Buzzer activ 3–24 V; este pornit/oprit digital. |
+| LCD VCC | 5V | Check the LCD module voltage. |
+| LCD GND | GND | Common ground. |
+| LCD SDA | A4 / SDA | I²C bus. |
+| LCD SCL | A5 / SCL | I²C bus. |
+| Buzzer `+` | D8 | Active 3–24 V buzzer; switched digitally on and off. |
 | Buzzer `−` | GND |  |
-| Buton NO, un contact | D7 | Intrare configurată `INPUT_PULLUP`. |
-| Buton NO, celălalt contact | GND | O apăsare este citită ca `LOW`. |
+| One button contact | D7 | Input configured with `INPUT_PULLUP`. |
+| Other button contact | GND | A press is read as `LOW`. |
 
-Pe Nano, pinii I²C sunt A4/SDA și A5/SCL. Dacă LCD-ul nu afișează nimic,
-verificați cablajul și încercați adresa `0x3F` în constructorul LCD din schiță.
+On the Nano, the I²C pins are A4/SDA and A5/SCL. If the LCD displays nothing,
+check the wiring and try `0x3F` in the sketch's LCD constructor.
 
-## Instalare și încărcare
+## Installation and upload
 
-1. Instalați [Arduino IDE](https://www.arduino.cc/en/software).
-2. Din Library Manager instalați biblioteca **LiquidCrystal I2C** (header
-   `LiquidCrystal_I2C.h`). Biblioteca `Wire` este inclusă în Arduino IDE.
-3. Deschideți `cw_trainer.ino` în Arduino IDE.
-4. Selectați placa și portul serial corecte din meniul **Tools**.
-5. Compilați și încărcați schița.
+1. Install the [Arduino IDE](https://www.arduino.cc/en/software).
+2. Use the Library Manager to install **LiquidCrystal I2C** (the
+   `LiquidCrystal_I2C.h` header). The `Wire` library is included with Arduino IDE.
+3. Open `cw_trainer.ino` in Arduino IDE.
+4. Select the correct board and serial port from the **Tools** menu.
+5. Compile and upload the sketch.
 
-## Configurare
+## Configuration
 
-Parametrii principali se află la începutul fișierului `cw_trainer.ino`:
+The main parameters are at the beginning of `cw_trainer.ino`:
 
-| Parametru | Valoare implicită | Rol |
+| Parameter | Default value | Purpose |
 | --- | ---: | --- |
-| `buzzerPin` | `8` | Pinul buzzerului. |
-| `keyPin` | `7` | Pinul cheii Morse. |
-| `wpm` | `15` | Viteza de antrenament; durata punctului este calculată ca `1200 / wpm`. |
-| `answerTimeout` | `10000` ms | Timpul maxim pentru a începe răspunsul. |
+| `buzzerPin` | `8` | Buzzer pin. |
+| `keyPin` | `7` | Morse key pin. |
+| `wpm` | `15` | Training speed; dot duration is calculated as `1200 / wpm`. |
+| `answerTimeout` | `10000` ms | Maximum time allowed to start the response. |
 
-### Setul de exerciții
+### Exercise set
 
-Fiecare rundă poate conține una dintre cele **36 de caractere** de mai jos:
+Each round can use one of these **36 characters**:
 
-- literele `A`–`Z`;
-- cifrele `0`–`9`.
+- letters `A`–`Z`;
+- digits `0`–`9`.
 
-Selecția aleatorie folosește automat dimensiunea setului de caractere definit
-în schiță, astfel încât toate literele și cifrele au aceeași șansă de a apărea.
-Cifrele folosesc codurile Morse internaționale de cinci semne: de exemplu,
-`0` este `-----`, `5` este `.....`, iar `9` este `----.`.
+Random selection automatically uses the size of the character set defined in
+the sketch, giving every letter and digit an equal chance of appearing. Digits
+use the five-symbol International Morse codes: for example, `0` is `-----`,
+`5` is `.....`, and `9` is `----.`.
 
-## Depanare
+## Troubleshooting
 
-- **LCD gol:** ajustați potențiometrul de contrast de pe modul și încercați
-  adresa `0x3F` în loc de `0x27`.
-- **Butonul pare inversat:** confirmați că este legat între D7 și GND, nu la 5V.
-- **Nu se aude buzzerul:** verificați polaritatea (`+` la D8 și `−` la GND) și
-  faptul că modelul este unul activ, cu oscilator intern.
+- **Blank LCD:** adjust the module contrast potentiometer and try address
+  `0x3F` instead of `0x27`.
+- **Button behaves in reverse:** confirm that it is wired between D7 and GND,
+  not 5V.
+- **No buzzer sound:** check the polarity (`+` to D8 and `−` to GND) and verify
+  that the model is active with an internal oscillator.
