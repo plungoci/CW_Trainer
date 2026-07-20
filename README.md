@@ -13,6 +13,11 @@ echipat cu USB-C. Schița selectează aleatoriu o literă sau o cifră pe care
 utilizatorul trebuie să o reproducă prin apăsarea unui buton. LCD-ul și buzzerul
 oferă feedback imediat.
 
+<p align="center">
+  <img src="images/2-removebg-preview.png" alt="Vedere frontală a dispozitivului CW Trainer" width="48%">
+  <img src="images/cw-trainer-front.png" alt="Vedere în perspectivă a dispozitivului CW Trainer" width="48%">
+</p>
+
 ### Cum funcționează
 
 1. La pornire, ecranul afișează viteza configurată (**15 WPM** implicit).
@@ -24,30 +29,78 @@ oferă feedback imediat.
 4. Ecranul afișează `CORECT!`, `GRESIT` sau `Timp expirat`, împreună cu
    răspunsul așteptat. Răspunsul trebuie început în maximum 10 secunde.
 
-### Componente și conexiuni
+### Lista de componente
 
-Sunt necesare un Arduino Nano V3.0 compatibil cu USB-C, un LCD verde 1602
-IIC/I²C, un buzzer piezoelectric activ de 3–24 V, un buton momentan normal
-deschis, fire jumper și, opțional, un breadboard. Buzzerul se conectează la D8
-și GND, iar butonul între D7 și GND. LCD-ul folosește 5V, GND, A4/SDA și
-A5/SCL. Nu este necesară o rezistență de pull-up externă: schița utilizează
-`INPUT_PULLUP`.
+| Cantitate | Componentă | Specificații / observații |
+| ---: | --- | --- |
+| 1 | [Arduino Nano V3.0 compatibil cu USB-C](https://www.emag.ro/modul-nano-v3-0-cu-usb-c-compatibil-cu-arduino-arduino-nano-328-usbc/pd/DVW798MBM/) | Placă compatibilă Arduino Nano, cu ATmega328P și conector USB-C. |
+| 1 | [LCD verde 1602 IIC/I²C](https://www.emag.ro/ecran-lcd-1602-iic-i2c-verde-ai849/pd/D9WQLTMBM/) | Afișaj I²C 16×2 compatibil cu `LiquidCrystal_I2C`; schița folosește implicit adresa `0x27`. |
+| 1 | [Buzzer piezoelectric activ, 3–24 V HND-2312](https://www.emag.ro/buzzer-piezoelectric-activ-3-24v-hnd-2312-sjduen-buzzer-hnd-2312/pd/DSK1PD2BM/) | Se conectează la D8 și GND. Oscilatorul intern permite schiței să îl pornească și oprească pentru redarea ritmului Morse. |
+| 1 | [Buton roșu momentan, normal deschis, F22 mm](https://www.emag.ro/buton-de-pornire-fara-blocare-no-rosu-f22mm-05718/pd/DJTBGF3BM/) | Se conectează între D7 și GND și servește drept cheie Morse. |
+| 1 | Breadboard | Opțional, pentru prototipare. |
+| 1 set | Fire jumper | Pentru toate conexiunile. |
+| 6 | Șuruburi M3 × 6 mm | Pentru fixarea componentelor în carcasă. |
+| 1 | Cablu USB-A–USB-C sau USB-C–USB-C | Pentru programarea și alimentarea plăcii Nano. |
 
-### Instalare, configurare și depanare
+Nu este necesară o rezistență de pull-up pentru cheie: schița activează
+rezistența internă cu `INPUT_PULLUP`.
 
-1. Instalează [Arduino IDE](https://www.arduino.cc/en/software) și, din Library
-   Manager, biblioteca **LiquidCrystal I2C**. Biblioteca `Wire` este inclusă în
-   Arduino IDE.
-2. Deschide `cw_trainer.ino`, selectează placa și portul serial corecte din
-   meniul **Tools**, apoi compilează și încarcă schița.
-3. Poți modifica `buzzerPin`, `keyPin`, `wpm` și `answerTimeout` la începutul
-   fișierului. Durata punctului este calculată ca `1200 / wpm`.
+### Conexiuni
 
-Fiecare rundă utilizează aleatoriu una dintre cele **36 de caractere**: literele
-`A`–`Z` și cifrele `0`–`9`. Dacă LCD-ul rămâne gol, reglează potențiometrul de
-contrast și încearcă adresa `0x3F` în loc de `0x27`. Dacă butonul funcționează
-invers, verifică legătura D7–GND; pentru buzzer, verifică polaritatea și faptul
-că este un model activ cu oscilator intern.
+| Modul / semnal | Arduino Nano | Observații |
+| --- | --- | --- |
+| VCC LCD | 5V | Verifică tensiunea modulului LCD. |
+| GND LCD | GND | Masă comună. |
+| SDA LCD | A4 / SDA | Magistrala I²C. |
+| SCL LCD | A5 / SCL | Magistrala I²C. |
+| Buzzer `+` | D8 | Buzzer activ de 3–24 V, comutat digital pornit/oprit. |
+| Buzzer `−` | GND |  |
+| Un contact al butonului | D7 | Intrare configurată cu `INPUT_PULLUP`. |
+| Celălalt contact al butonului | GND | O apăsare este citită ca `LOW`. |
+
+Pe Nano, pinii I²C sunt A4/SDA și A5/SCL. Dacă LCD-ul nu afișează nimic,
+verifică legăturile și încearcă `0x3F` în constructorul LCD din schiță.
+
+### Instalare și încărcare
+
+1. Instalează [Arduino IDE](https://www.arduino.cc/en/software).
+2. Din Library Manager, instalează **LiquidCrystal I2C** (antetul
+   `LiquidCrystal_I2C.h`). Biblioteca `Wire` este inclusă în Arduino IDE.
+3. Deschide `cw_trainer.ino` în Arduino IDE.
+4. Selectează placa și portul serial corecte din meniul **Tools**.
+5. Compilează și încarcă schița.
+
+### Configurare
+
+Parametrii principali se află la începutul fișierului `cw_trainer.ino`:
+
+| Parametru | Valoare implicită | Rol |
+| --- | ---: | --- |
+| `buzzerPin` | `8` | Pinul buzzerului. |
+| `keyPin` | `7` | Pinul cheii Morse. |
+| `wpm` | `15` | Viteza de antrenament; durata punctului se calculează ca `1200 / wpm`. |
+| `answerTimeout` | `10000` ms | Timpul maxim permis pentru începerea răspunsului. |
+
+### Setul de exerciții
+
+Fiecare rundă poate utiliza unul dintre aceste **36 de caractere**:
+
+- literele `A`–`Z`;
+- cifrele `0`–`9`.
+
+Selecția aleatorie utilizează automat dimensiunea setului de caractere definit
+în schiță, astfel încât fiecare literă și cifră are șanse egale să apară.
+Cifrele folosesc codurile Morse internaționale din cinci simboluri: de exemplu,
+`0` este `-----`, `5` este `.....`, iar `9` este `----.`.
+
+### Depanare
+
+- **LCD gol:** reglează potențiometrul de contrast al modulului și încearcă
+  adresa `0x3F` în loc de `0x27`.
+- **Butonul funcționează invers:** confirmă că este conectat între D7 și GND,
+  nu la 5V.
+- **Buzzer fără sunet:** verifică polaritatea (`+` la D8 și `−` la GND) și că
+  modelul este activ, cu oscilator intern.
 
 ---
 
