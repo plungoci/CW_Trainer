@@ -1,325 +1,405 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <string.h>
+#include <stdio.h>
 
-// Dacă LCD-ul nu afișează nimic, încearcă adresa 0x3F.
+// LCD 1602 I2C existent; incearca 0x3F daca modulul nu raspunde la 0x27.
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// Pini
-const byte buzzerPin = 8;
-const byte keyPin = 7;
+// Arduino Nano (ATmega328P): A4/A5 sunt rezervati pentru LCD/I2C, iar D8
+// pentru buzzer. D7 este cheia/butonul original si nu este reutilizat.
+constexpr byte buzzerPin = 8;
+constexpr byte keyPin = 7;  // Buton existent, activ LOW, INPUT_PULLUP.
+constexpr byte PIN_JOYSTICK_X = A0;
+constexpr byte PIN_JOYSTICK_Y = A1;
+constexpr byte PIN_JOYSTICK_SW = 2;
+constexpr byte PIN_STRAIGHT_KEY = 3;
+constexpr byte PIN_PADDLE_DIT = 4;
+constexpr byte PIN_PADDLE_DAH = 5;
 
-// Buzzerul activ are oscilator intern: este pornit/oprit digital.
-const byte wpm = 15;
+constexpr int DEFAULT_WPM = 15;
+constexpr int MIN_WPM = 5;
+constexpr int MAX_WPM = 50;
+constexpr int WPM_STEP = 1;
+// Nano are ADC pe 10 biti (0..1023); aceste praguri sunt usor de calibrat.
+constexpr int JOYSTICK_LOW_THRESHOLD = 300;
+constexpr int JOYSTICK_HIGH_THRESHOLD = 700;
+constexpr unsigned long JOYSTICK_INITIAL_REPEAT_MS = 350;
+constexpr unsigned long JOYSTICK_REPEAT_MS = 140;
+constexpr unsigned long JOYSTICK_DEBOUNCE_MS = 25;
+constexpr unsigned long JOYSTICK_LONG_PRESS_MS = 800;
+constexpr unsigned long KEY_DEBOUNCE_MS = 12;
+constexpr unsigned long answerTimeout = 10000UL;
+constexpr byte maxMorseLength = 5;
 
-// Durata punctului în milisecunde
-const unsigned int dotTime = 1200 / wpm;
-
-// Sub acest prag: punct.
-// Peste acest prag: linie.
-const unsigned int dotDashLimit = dotTime * 2;
-
-// Pauza după care caracterul introdus este considerat terminat
-const unsigned int characterTimeout = dotTime * 5;
-
-// Timp maxim pentru începerea răspunsului
-const unsigned long answerTimeout = 10000UL;
-
-// Lungimea maximă a unui caracter Morse
-const byte maxMorseLength = 5;
-
-const char characters[] =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-// Numărul de caractere disponibile pentru exerciții.
-const byte characterCount = sizeof(characters) - 1;
-
-const char* morseCodes[] = {
-  // A-Z
-  ".-",    // A
-  "-...",  // B
-  "-.-.",  // C
-  "-..",   // D
-  ".",     // E
-  "..-.",  // F
-  "--.",   // G
-  "....",  // H
-  "..",    // I
-  ".---",  // J
-  "-.-",   // K
-  ".-..",  // L
-  "--",    // M
-  "-.",    // N
-  "---",   // O
-  ".--.",  // P
-  "--.-",  // Q
-  ".-.",   // R
-  "...",   // S
-  "-",     // T
-  "..-",   // U
-  "...-",  // V
-  ".--",   // W
-  "-..-",  // X
-  "-.--",  // Y
-  "--..",  // Z
-
-  // 0-9
-  "-----",  // 0
-  ".----",  // 1
-  "..---",  // 2
-  "...--",  // 3
-  "....-",  // 4
-  ".....",  // 5
-  "-....",  // 6
-  "--...",  // 7
-  "---..",  // 8
-  "----."   // 9
+struct MorseTiming {
+  unsigned long dit;
+  unsigned long dah;
+  unsigned long elementGap;
+  unsigned long characterGap;
+  unsigned long wordGap;
 };
 
-void soundOn() {
-  digitalWrite(buzzerPin, HIGH);
+enum class TrainingMode { Letters, Numbers, Phrases };
+enum class AppState { MainMenu, TrainingSelection, WpmSettings, Training };
+enum class JoystickEvent { None, Up, Down, Left, Right, ShortPress, LongPress };
+enum class OutputPhase { Idle, Tone, Gap };
+enum class TrainingPhase { Choose, Preview, Playing, WaitAnswer, Result };
+
+int currentWpm = DEFAULT_WPM;
+MorseTiming timing;
+TrainingMode trainingMode = TrainingMode::Letters;
+AppState appState = AppState::MainMenu;
+TrainingPhase trainingPhase = TrainingPhase::Choose;
+byte menuIndex = 0;
+byte selectionIndex = 0;
+bool displayDirty = true;
+
+const char characters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const char *const morseCodes[] = {
+  ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---",
+  "-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.", "...", "-",
+  "..-", "...-", ".--", "-..-", "-.--", "--..",
+  "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----."
+};
+constexpr byte LETTER_COUNT = 26;
+constexpr byte CHARACTER_COUNT = sizeof(characters) - 1;
+// Frazele sunt stocate in flash ca date constante; extinde lista fara RAM dinamic.
+const char phrases[][17] = { "CQ CQ", "TEST ONE", "HELLO WORLD", "73 DE YO" };
+constexpr byte PHRASE_COUNT = sizeof(phrases) / sizeof(phrases[0]);
+
+// Motorul comun pentru demonstratie si paddle. Nu foloseste delay().
+OutputPhase outputPhase = OutputPhase::Idle;
+const char *outputCode = nullptr;
+byte outputPosition = 0;
+unsigned long outputDeadline = 0;
+bool outputFinished = false;
+
+char targetText[17];
+char targetCode[110];
+char receivedCode[maxMorseLength + 1];
+byte receivedLength = 0;
+bool answerStarted = false;
+bool previousExistingKeyDown = false;
+unsigned long existingKeyChangedAt = 0;
+unsigned long existingKeyDownAt = 0;
+unsigned long answerStartedAt = 0;
+unsigned long lastExistingKeyReleaseAt = 0;
+unsigned long phaseStartedAt = 0;
+bool answerCorrect = false;
+
+bool previousStraightDown = false;
+unsigned long straightChangedAt = 0;
+bool paddleLastWasDit = false;
+
+bool previousJoystickButtonDown = false;
+unsigned long joystickButtonChangedAt = 0;
+unsigned long joystickButtonDownAt = 0;
+bool joystickLongReported = false;
+JoystickEvent heldDirection = JoystickEvent::None;
+unsigned long directionChangedAt = 0;
+unsigned long directionRepeatAt = 0;
+
+void recalculateMorseTiming() {
+  timing.dit = 1200UL / currentWpm;
+  timing.dah = timing.dit * 3UL;
+  timing.elementGap = timing.dit;
+  timing.characterGap = timing.dit * 3UL;
+  timing.wordGap = timing.dit * 7UL;
 }
 
-void soundOff() {
-  digitalWrite(buzzerPin, LOW);
+const char *modeName(TrainingMode mode) {
+  if (mode == TrainingMode::Letters) return "Litere";
+  if (mode == TrainingMode::Numbers) return "Cifre";
+  return "Fraze";
 }
 
-void playDot() {
-  soundOn();
-  delay(dotTime);
-  soundOff();
-  delay(dotTime);
+void soundOn() { digitalWrite(buzzerPin, HIGH); }
+void soundOff() { digitalWrite(buzzerPin, LOW); }
+
+void startMorseOutput(const char *code) {
+  outputCode = code;
+  outputPosition = 0;
+  outputPhase = OutputPhase::Idle;
+  outputFinished = false;
 }
 
-void playDash() {
-  soundOn();
-  delay(dotTime * 3);
-  soundOff();
-  delay(dotTime);
-}
+bool morseOutputBusy() { return outputCode != nullptr; }
 
-void playMorse(const char* code) {
-  for (byte i = 0; code[i] != '\0'; i++) {
-    if (code[i] == '.') {
-      playDot();
-    } else if (code[i] == '-') {
-      playDash();
-    }
-  }
-
-  soundOff();
-}
-
-void waitForKeyRelease() {
-  soundOff();
-
-  while (digitalRead(keyPin) == LOW) {
-    delay(5);
-  }
-
-  delay(30);
-}
-
-// Testul începe numai după o apăsare intenționată a cheii.
-void waitForTestStart() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Apasa butonul");
-  lcd.setCursor(0, 1);
-  lcd.print("pentru start");
-
-  while (digitalRead(keyPin) == HIGH) {
-    delay(5);
-  }
-
-  waitForKeyRelease();
-}
-
-void clearSecondLine() {
-  lcd.setCursor(0, 1);
-  lcd.print("                ");
-  lcd.setCursor(0, 1);
-}
-
-bool readUserMorse(char* receivedCode) {
-  byte position = 0;
-  bool started = false;
-
-  unsigned long waitingStart = millis();
-  unsigned long lastReleaseTime = millis();
-
-  receivedCode[0] = '\0';
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Reproduce:");
-  clearSecondLine();
-
-  waitForKeyRelease();
-
-  while (true) {
-    if (digitalRead(keyPin) == LOW) {
-      started = true;
-
-      unsigned long pressStart = millis();
-
-      soundOn();
-
-      while (digitalRead(keyPin) == LOW) {
-        delay(1);
-      }
-
+void updateMorseOutput() {
+  if (!outputCode) return;
+  unsigned long now = millis();
+  if (outputPhase == OutputPhase::Idle) {
+    if (outputCode[outputPosition] == '\0') {
+      outputCode = nullptr;
+      outputFinished = true;
       soundOff();
-
-      unsigned long pressDuration = millis() - pressStart;
-
-      // Ignoră impulsurile extrem de scurte provocate de contacte
-      if (pressDuration >= 15) {
-        if (position < maxMorseLength) {
-          if (pressDuration < dotDashLimit) {
-            receivedCode[position] = '.';
-          } else {
-            receivedCode[position] = '-';
-          }
-
-          position++;
-          receivedCode[position] = '\0';
-
-          clearSecondLine();
-          lcd.print(receivedCode);
-        }
-
-        lastReleaseTime = millis();
-      }
-
-      delay(20);
+      return;
     }
-
-    if (started && millis() - lastReleaseTime >= characterTimeout) {
-      return true;
+    // Separators are generated by buildPhraseMorse(): the normal element gap
+    // has already elapsed, so add the remaining units for a character/word.
+    if (outputCode[outputPosition] == '/' || outputCode[outputPosition] == '|') {
+      soundOff();
+      outputDeadline = now + (outputCode[outputPosition] == '/' ?
+        timing.characterGap - timing.elementGap : timing.wordGap - timing.elementGap);
+      outputPhase = OutputPhase::Gap;
+      return;
     }
-
-    if (!started && millis() - waitingStart >= answerTimeout) {
-      return false;
+    soundOn();
+    outputDeadline = now + (outputCode[outputPosition] == '.' ? timing.dit : timing.dah);
+    outputPhase = OutputPhase::Tone;
+  } else if (now >= outputDeadline) {
+    if (outputPhase == OutputPhase::Tone) {
+      soundOff();
+      outputDeadline = now + timing.elementGap;
+      outputPhase = OutputPhase::Gap;
+    } else {
+      ++outputPosition;
+      outputPhase = OutputPhase::Idle;
     }
   }
 }
 
-void correctSound() {
-  soundOn();
-  delay(100);
-  soundOff();
-
-  delay(80);
-
-  soundOn();
-  delay(150);
-  soundOff();
+const char *morseForCharacter(char character) {
+  if (character >= 'A' && character <= 'Z') return morseCodes[character - 'A'];
+  if (character >= '0' && character <= '9') return morseCodes[LETTER_COUNT + character - '0'];
+  return nullptr;
 }
 
-void errorSound() {
-  soundOn();
-  delay(400);
-  soundOff();
+void buildPhraseMorse(const char *phrase, char *destination, size_t destinationSize) {
+  size_t used = 0;
+  for (byte i = 0; phrase[i] != '\0' && used + 1 < destinationSize; ++i) {
+    if (phrase[i] == ' ') {
+      destination[used++] = '|';
+      continue;
+    }
+    const char *code = morseForCharacter(phrase[i]);
+    if (!code) continue;
+    for (byte j = 0; code[j] != '\0' && used + 1 < destinationSize; ++j) destination[used++] = code[j];
+    if (phrase[i + 1] != '\0' && phrase[i + 1] != ' ' && used + 1 < destinationSize) destination[used++] = '/';
+  }
+  destination[used] = '\0';
 }
 
-void showResult(
-  char targetCharacter,
-  const char* targetCode,
-  const char* receivedCode) {
+JoystickEvent directionFromJoystick() {
+  int x = analogRead(PIN_JOYSTICK_X);
+  int y = analogRead(PIN_JOYSTICK_Y);
+  // Orientarea poate fi inversata fizic; pragurile si maparea sunt centralizate aici.
+  if (y < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Up;
+  if (y > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Down;
+  if (x < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Left;
+  if (x > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Right;
+  return JoystickEvent::None;
+}
+
+JoystickEvent updateJoystick() {
+  unsigned long now = millis();
+  bool down = digitalRead(PIN_JOYSTICK_SW) == LOW;
+  if (down != previousJoystickButtonDown && now - joystickButtonChangedAt >= JOYSTICK_DEBOUNCE_MS) {
+    previousJoystickButtonDown = down;
+    joystickButtonChangedAt = now;
+    if (down) { joystickButtonDownAt = now; joystickLongReported = false; }
+    else if (!joystickLongReported) return JoystickEvent::ShortPress;
+  }
+  if (down && !joystickLongReported && now - joystickButtonDownAt >= JOYSTICK_LONG_PRESS_MS) {
+    joystickLongReported = true;
+    return JoystickEvent::LongPress;
+  }
+  JoystickEvent direction = directionFromJoystick();
+  if (direction != heldDirection) {
+    heldDirection = direction;
+    directionChangedAt = now;
+    directionRepeatAt = now + JOYSTICK_INITIAL_REPEAT_MS;
+    return direction;
+  }
+  if (direction != JoystickEvent::None && now >= directionRepeatAt) {
+    directionRepeatAt = now + JOYSTICK_REPEAT_MS;
+    return direction;
+  }
+  return JoystickEvent::None;
+}
+
+void printPadded(const char *line) {
+  lcd.print(line);
+  byte length = strlen(line);
+  while (length++ < 16) lcd.print(' ');
+}
+
+void renderMenu() {
+  if (!displayDirty) return;
   lcd.clear();
-
-  if (strcmp(targetCode, receivedCode) == 0) {
-    lcd.setCursor(0, 0);
-    lcd.print("CORECT!");
-
+  if (appState == AppState::MainMenu) {
+    const char *items[] = { "Training", "Viteza WPM", "Start Training", "Inapoi" };
+    lcd.setCursor(0, 0); lcd.print('>'); lcd.print(items[menuIndex]);
     lcd.setCursor(0, 1);
-    lcd.print(targetCharacter);
-    lcd.print(" = ");
-    lcd.print(targetCode);
-
-    correctSound();
-  } else {
-    lcd.setCursor(0, 0);
-    lcd.print("GRESIT: ");
-    lcd.print(receivedCode);
-
-    lcd.setCursor(0, 1);
-    lcd.print(targetCharacter);
-    lcd.print(" = ");
-    lcd.print(targetCode);
-
-    errorSound();
+    if (menuIndex == 0) { lcd.print(modeName(trainingMode)); }
+    else if (menuIndex == 1) { lcd.print(currentWpm); lcd.print(" WPM"); }
+    else if (menuIndex == 2) lcd.print("Buton D7 = start");
+    else lcd.print("Apasa lung: sus");
+  } else if (appState == AppState::TrainingSelection) {
+    lcd.setCursor(0, 0); lcd.print("Training:");
+    lcd.setCursor(0, 1); lcd.print('>'); lcd.print(modeName(static_cast<TrainingMode>(selectionIndex)));
+  } else if (appState == AppState::WpmSettings) {
+    lcd.setCursor(0, 0); lcd.print("Viteza WPM");
+    lcd.setCursor(0, 1); lcd.print("< "); lcd.print(currentWpm); lcd.print(" WPM >");
   }
+  displayDirty = false;
+}
 
-  delay(3000);
+void startTraining() {
+  appState = AppState::Training;
+  trainingPhase = TrainingPhase::Choose;
+  outputCode = nullptr;
+  soundOff();
+  displayDirty = true;
+}
+
+void updateMenu(JoystickEvent event) {
+  if (appState == AppState::Training) return;
+  if (appState == AppState::MainMenu) {
+    if (event == JoystickEvent::Up && menuIndex > 0) { --menuIndex; displayDirty = true; }
+    if (event == JoystickEvent::Down && menuIndex < 3) { ++menuIndex; displayDirty = true; }
+    if (event == JoystickEvent::ShortPress || event == JoystickEvent::Right) {
+      if (menuIndex == 0) { appState = AppState::TrainingSelection; selectionIndex = static_cast<byte>(trainingMode); displayDirty = true; }
+      else if (menuIndex == 1) { appState = AppState::WpmSettings; displayDirty = true; }
+      else if (menuIndex == 2) startTraining();
+    }
+  } else if (appState == AppState::TrainingSelection) {
+    if ((event == JoystickEvent::Up || event == JoystickEvent::Left) && selectionIndex > 0) { --selectionIndex; displayDirty = true; }
+    if ((event == JoystickEvent::Down || event == JoystickEvent::Right) && selectionIndex < 2) { ++selectionIndex; displayDirty = true; }
+    if (event == JoystickEvent::ShortPress) { trainingMode = static_cast<TrainingMode>(selectionIndex); appState = AppState::MainMenu; displayDirty = true; }
+    if (event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
+  } else if (appState == AppState::WpmSettings) {
+    if ((event == JoystickEvent::Up || event == JoystickEvent::Right) && currentWpm < MAX_WPM) { currentWpm += WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
+    if ((event == JoystickEvent::Down || event == JoystickEvent::Left) && currentWpm > MIN_WPM) { currentWpm -= WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
+    if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
+  }
+}
+
+// D7 pastreaza semantica originala: LOW inseamna apasat, tine sidetone-ul
+// activ pe durata apasarii si masoara punct/linie in timpul raspunsului.
+void updateExistingKeyButton() {
+  unsigned long now = millis();
+  bool down = digitalRead(keyPin) == LOW;
+  if (down != previousExistingKeyDown && now - existingKeyChangedAt >= KEY_DEBOUNCE_MS) {
+    previousExistingKeyDown = down;
+    existingKeyChangedAt = now;
+    if (down) {
+      existingKeyDownAt = now;
+      if (appState == AppState::MainMenu) startTraining();
+      if (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer) {
+        answerStarted = true;
+        soundOn();
+      }
+    } else if (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer) {
+      soundOff();
+      unsigned long pressDuration = now - existingKeyDownAt;
+      if (pressDuration >= 15 && receivedLength < maxMorseLength) {
+        receivedCode[receivedLength++] = pressDuration < timing.dit * 2UL ? '.' : '-';
+        receivedCode[receivedLength] = '\0';
+      }
+      lastExistingKeyReleaseAt = now;
+    }
+  }
+}
+
+// Straight key este independent de D7 si are sidetone imediat, cu filtrare scurta.
+void updateStraightKey() {
+  unsigned long now = millis();
+  bool down = digitalRead(PIN_STRAIGHT_KEY) == LOW;
+  if (down != previousStraightDown && now - straightChangedAt >= KEY_DEBOUNCE_MS) {
+    previousStraightDown = down;
+    straightChangedAt = now;
+    if (appState != AppState::Training || trainingPhase != TrainingPhase::WaitAnswer) {
+      if (down) soundOn(); else if (!morseOutputBusy()) soundOff();
+    }
+  }
+}
+
+// Keyer simplu non-iambic: la ambele padele selecteaza alternativ DIT/DAH.
+// Este delimitat aici pentru extindere ulterioara cu memoria padelelor/Mode A/B.
+void updatePaddle() {
+  if (morseOutputBusy() || (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer)) return;
+  bool dit = digitalRead(PIN_PADDLE_DIT) == LOW;
+  bool dah = digitalRead(PIN_PADDLE_DAH) == LOW;
+  if (!dit && !dah) return;
+  bool sendDit = dit;
+  if (dit && dah) sendDit = paddleLastWasDit ? false : true;
+  else if (dah) sendDit = false;
+  paddleLastWasDit = sendDit;
+  startMorseOutput(sendDit ? "." : "-");
+}
+
+void chooseTrainingTarget() {
+  if (trainingMode == TrainingMode::Phrases) {
+    strncpy(targetText, phrases[random(PHRASE_COUNT)], sizeof(targetText));
+    targetText[sizeof(targetText) - 1] = '\0';
+    buildPhraseMorse(targetText, targetCode, sizeof(targetCode));
+  } else {
+    byte first = trainingMode == TrainingMode::Letters ? 0 : LETTER_COUNT;
+    byte count = trainingMode == TrainingMode::Letters ? LETTER_COUNT : CHARACTER_COUNT - LETTER_COUNT;
+    byte index = first + random(count);
+    targetText[0] = characters[index]; targetText[1] = '\0';
+    strncpy(targetCode, morseCodes[index], sizeof(targetCode));
+  }
+}
+
+void showTrainingLine(const char *top, const char *bottom) {
+  lcd.clear(); lcd.setCursor(0, 0); printPadded(top); lcd.setCursor(0, 1); printPadded(bottom);
+}
+
+void updateTraining(JoystickEvent event) {
+  if (appState != AppState::Training) return;
+  unsigned long now = millis();
+  if (event == JoystickEvent::LongPress) { outputCode = nullptr; soundOff(); appState = AppState::MainMenu; displayDirty = true; return; }
+  if (trainingPhase == TrainingPhase::Choose) {
+    chooseTrainingTarget();
+    char line[17]; snprintf(line, sizeof(line), "%s %s", targetText, targetCode);
+    showTrainingLine("Asculta...", line);
+    phaseStartedAt = now; trainingPhase = TrainingPhase::Preview;
+  } else if (trainingPhase == TrainingPhase::Preview && now - phaseStartedAt >= 800) {
+    // Frazele raman extensibile; caracterele sunt demonstrate cu codul lor Morse.
+    startMorseOutput(targetCode); trainingPhase = TrainingPhase::Playing;
+  } else if (trainingPhase == TrainingPhase::Playing && outputFinished) {
+    outputFinished = false; phaseStartedAt = now; trainingPhase = TrainingPhase::WaitAnswer;
+    receivedLength = 0; receivedCode[0] = '\0'; answerStarted = false; answerStartedAt = now;
+    showTrainingLine("Reproduce:", "D7; lung=meniu");
+  } else if (trainingPhase == TrainingPhase::WaitAnswer) {
+    if (answerStarted && now - lastExistingKeyReleaseAt >= timing.characterGap + timing.dit * 2UL) {
+      answerCorrect = strcmp(targetCode, receivedCode) == 0;
+      char line[17]; snprintf(line, sizeof(line), "%s = %s", targetText, targetCode);
+      showTrainingLine(answerCorrect ? "CORECT!" : "GRESIT:", line);
+      trainingPhase = TrainingPhase::Result; phaseStartedAt = now;
+    } else if (!answerStarted && now - answerStartedAt >= answerTimeout) {
+      char line[17]; snprintf(line, sizeof(line), "%s = %s", targetText, targetCode);
+      showTrainingLine("Timp expirat", line); trainingPhase = TrainingPhase::Result; phaseStartedAt = now;
+    }
+  } else if (trainingPhase == TrainingPhase::Result && now - phaseStartedAt >= 3000) {
+    trainingPhase = TrainingPhase::Choose;
+  }
 }
 
 void setup() {
   pinMode(buzzerPin, OUTPUT);
   pinMode(keyPin, INPUT_PULLUP);
-
-  Wire.begin();
-
-  lcd.begin();
-  lcd.backlight();
-
-  randomSeed(analogRead(A0));
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("CW Trainer");
-
-  lcd.setCursor(0, 1);
-  lcd.print(wpm);
-  lcd.print(" WPM");
-
-  delay(2500);
-
-  waitForTestStart();
+  pinMode(PIN_JOYSTICK_SW, INPUT_PULLUP);
+  pinMode(PIN_STRAIGHT_KEY, INPUT_PULLUP);
+  pinMode(PIN_PADDLE_DIT, INPUT_PULLUP);
+  pinMode(PIN_PADDLE_DAH, INPUT_PULLUP);
+  recalculateMorseTiming();
+  Wire.begin(); lcd.begin(); lcd.backlight();
+  randomSeed(analogRead(A2));  // A2 ramane liber dupa alocarea joystick-ului pe A0/A1.
+  lcd.clear(); lcd.setCursor(0, 0); lcd.print("CW Trainer"); lcd.setCursor(0, 1); lcd.print(currentWpm); lcd.print(" WPM");
+  displayDirty = true;
 }
 
 void loop() {
-  char receivedCode[maxMorseLength + 1];
-
-  // Alege aleatoriu o literă sau o cifră disponibilă.
-  int index = random(0, characterCount);
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Asculta...");
-
-  lcd.setCursor(0, 1);
-  lcd.print(characters[index]);
-  lcd.print(" = ");
-  lcd.print(morseCodes[index]);
-
-  delay(800);
-
-  // Arduino demonstrează caracterul.
-  playMorse(morseCodes[index]);
-
-  delay(dotTime * 4);
-
-  // Utilizatorul reproduce caracterul cu cheia CW.
-  bool entered = readUserMorse(receivedCode);
-
-  if (entered) {
-    showResult(
-      characters[index],
-      morseCodes[index],
-      receivedCode);
-  } else {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Timp expirat");
-
-    lcd.setCursor(0, 1);
-    lcd.print(characters[index]);
-    lcd.print(" = ");
-    lcd.print(morseCodes[index]);
-
-    errorSound();
-    delay(3000);
-  }
+  JoystickEvent event = updateJoystick();
+  updateExistingKeyButton();
+  updateStraightKey();
+  updatePaddle();
+  updateMenu(event);
+  updateTraining(event);
+  updateMorseOutput();
+  renderMenu();
 }

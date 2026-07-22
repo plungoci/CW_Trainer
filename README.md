@@ -204,9 +204,71 @@ use the five-symbol International Morse codes: for example, `0` is `-----`,
 
 ### To-do
 
-- Add a menu function and the buttons needed to navigate the menu.
-- Add two jack sockets for a straight key and an automatic paddle key.
 - Redesign the 3D model.
+
+### Menu, keys, and wiring (implemented)
+
+The sketch now runs a non-blocking menu and Morse-output state machine. The
+existing **D7** button remains the original active-low Morse input: it starts
+training from the main menu and, while a character answer is requested, its
+press duration is decoded exactly as the original dot/dash key. It is not
+shared with any new connector.
+
+| Signal | Arduino Nano pin | Configuration |
+| --- | --- | --- |
+| Existing button/key | D7 | `INPUT_PULLUP`, active LOW (unchanged) |
+| Active buzzer | D8 | Output (unchanged) |
+| KY-023 VRx / VRy | A0 / A1 | 10-bit ADC inputs |
+| KY-023 SW | D2 | `INPUT_PULLUP`, active LOW |
+| Straight-key jack signal | D3 | `INPUT_PULLUP`, active LOW |
+| Paddle TRS Tip (DIT) | D4 | `INPUT_PULLUP`, active LOW |
+| Paddle TRS Ring (DAH) | D5 | `INPUT_PULLUP`, active LOW |
+| LCD I2C | A4/SDA, A5/SCL | reserved for LCD |
+
+Connections:
+
+```text
+KY-023 GND -> Nano GND
+KY-023 VCC -> Nano 5V
+KY-023 VRx -> A0
+KY-023 VRy -> A1
+KY-023 SW  -> D2
+
+Straight-key jack signal -> D3
+Straight-key jack ground -> GND
+
+Paddle TRS Tip    -> D4 (DIT)
+Paddle TRS Ring   -> D5 (DAH)
+Paddle TRS Sleeve -> GND
+
+Existing button remains: D7 -> button -> GND
+```
+
+This mapping is specific to the documented 5 V Arduino Nano/ATmega328P. Power
+the KY-023 from 5 V on this board; do **not** use that recommendation on a
+3.3 V ADC board unless the joystick output is level-shifted or powered at a
+safe voltage. Some paddles reverse Tip/Ring; swap `PIN_PADDLE_DIT` and
+`PIN_PADDLE_DAH` in the centralized configuration if necessary.
+
+Use the joystick up/down to move, left/right to adjust, short press to select,
+and hold SW for 800 ms to return/stop training. The 10-bit ADC thresholds,
+repeat timing, WPM range (5--50), and all pin assignments are centralized at
+the beginning of `cw_trainer.ino`. DIT and DAH held together alternate the next
+element; this deliberately documented simple alternation is not yet iambic A/B
+and is isolated so paddle memory/iambic modes can be added later.
+
+#### Hardware regression checklist
+
+1. Verify neutral joystick gives no menu movement; test up/down, held repeat,
+   left/right WPM adjustment, short select, and long return at both WPM limits.
+2. Select Letters, Numbers, and Phrases; start and long-press SW to stop.
+3. From the menu and during an answer, press and hold the original D7 button:
+   it must still start training, sound while held, and classify short/long
+   presses as dot/dash without interaction from the joystick or jacks.
+4. Test straight key press/release/hold for immediate sidetone. Test DIT, DAH,
+   each held, and both together; changing WPM must change their element length.
+5. Confirm LCD, buzzer, and I2C wiring remain functional before enclosing the
+   device.
 
 ## Troubleshooting
 
