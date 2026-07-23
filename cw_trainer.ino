@@ -273,8 +273,10 @@ void updateMenu(JoystickEvent event) {
     if (event == JoystickEvent::ShortPress) { trainingMode = static_cast<TrainingMode>(selectionIndex); appState = AppState::MainMenu; displayDirty = true; }
     if (event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
   } else if (appState == AppState::WpmSettings) {
-    if ((event == JoystickEvent::Up || event == JoystickEvent::Right) && currentWpm < MAX_WPM) { currentWpm += WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
-    if ((event == JoystickEvent::Down || event == JoystickEvent::Left) && currentWpm > MIN_WPM) { currentWpm -= WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
+    // In setarile WPM, doar directia orizontala modifica viteza:
+    // dreapta creste, iar stanga scade.
+    if (event == JoystickEvent::Right && currentWpm < MAX_WPM) { currentWpm += WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
+    if (event == JoystickEvent::Left && currentWpm > MIN_WPM) { currentWpm -= WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
     if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
   }
 }

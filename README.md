@@ -256,8 +256,9 @@ the KY-023 from 5 V on this board; do **not** use that recommendation on a
 safe voltage. Some paddles reverse Tip/Ring; swap `PIN_PADDLE_DIT` and
 `PIN_PADDLE_DAH` in the centralized configuration if necessary.
 
-Use the joystick up/down to move, left/right to adjust, short press to select,
-and hold SW for 800 ms to return/stop training. The 10-bit ADC thresholds,
+Use the joystick up/down to move. In the WPM settings, move it right to
+increase the speed and left to decrease it; short press to select, and hold SW
+for 800 ms to return/stop training. The 10-bit ADC thresholds,
 repeat timing, WPM range (5--50), and all pin assignments are centralized at
 the beginning of `cw_trainer.ino`. DIT and DAH held together alternate the next
 element; this deliberately documented simple alternation is not yet iambic A/B
