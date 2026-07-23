@@ -14,8 +14,7 @@ utilizatorul trebuie să o reproducă prin apăsarea unui buton. LCD-ul și buzz
 oferă feedback imediat.
 
 <p align="center">
-  <img src="images/2-removebg-preview.png" alt="Vedere frontală a dispozitivului CW Trainer" width="48%">
-  <img src="images/cw-trainer-front.png" alt="Vedere în perspectivă a dispozitivului CW Trainer" width="48%">
+  <img src="images/cw-trainer.png" alt="Vedere în perspectivă a dispozitivului CW Trainer" width="50%">
 </p>
 
 ### Cum funcționează
