@@ -10,8 +10,10 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // pentru buzzer. D7 este cheia/butonul original si nu este reutilizat.
 constexpr byte buzzerPin = 8;
 constexpr byte keyPin = 7;  // Buton existent, activ LOW, INPUT_PULLUP.
-constexpr byte PIN_JOYSTICK_X = A0;
-constexpr byte PIN_JOYSTICK_Y = A1;
+// Calibrarea pe dispozitiv a aratat ca orientarea fizica nu corespunde
+// etichetelor VRx/VRy: A0 se modifica sus/jos, iar A1 stanga/dreapta.
+constexpr byte PIN_JOYSTICK_AXIS_1 = A0;
+constexpr byte PIN_JOYSTICK_AXIS_2 = A1;
 constexpr byte PIN_JOYSTICK_SW = 2;
 constexpr byte PIN_STRAIGHT_KEY = 3;
 constexpr byte PIN_PADDLE_DIT = 4;
@@ -24,9 +26,9 @@ constexpr int WPM_STEP = 1;
 // Nano are ADC pe 10 biti (0..1023); aceste praguri sunt usor de calibrat.
 constexpr int JOYSTICK_LOW_THRESHOLD = 300;
 constexpr int JOYSTICK_HIGH_THRESHOLD = 700;
-// Majoritatea modulelor KY-023 citesc o valoare mica la stanga si una mare la
-// dreapta. Inverseaza doar aceasta optiune daca modulul montat are axa X inversata.
-constexpr bool JOYSTICK_X_REVERSED = false;
+// Valorile brute verificate pentru montajul curent: A0 mare = SUS, A0 mic = JOS,
+// A1 mare = DREAPTA si A1 mic = STANGA. Nu deduce directia din numele VRx/VRy.
+constexpr bool JOYSTICK_DIAGNOSTICS = true;
 constexpr unsigned long JOYSTICK_INITIAL_REPEAT_MS = 350;
 constexpr unsigned long JOYSTICK_REPEAT_MS = 140;
 constexpr unsigned long JOYSTICK_DEBOUNCE_MS = 25;
@@ -105,6 +107,8 @@ bool joystickLongReported = false;
 JoystickEvent heldDirection = JoystickEvent::None;
 unsigned long directionChangedAt = 0;
 unsigned long directionRepeatAt = 0;
+int lastJoystickAxis1 = 0;
+int lastJoystickAxis2 = 0;
 
 void recalculateMorseTiming() {
   timing.dit = 1200UL / currentWpm;
@@ -188,15 +192,37 @@ void buildPhraseMorse(const char *phrase, char *destination, size_t destinationS
 }
 
 JoystickEvent directionFromJoystick() {
-  int x = analogRead(PIN_JOYSTICK_X);
-  int y = analogRead(PIN_JOYSTICK_Y);
-  // Pastreaza maparea verticala pentru navigarea celorlalte meniuri.
-  if (y < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Up;
-  if (y > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Down;
-  // Maparea axei X asigura intotdeauna ca Right inseamna dreapta fizica.
-  if (x < JOYSTICK_LOW_THRESHOLD) return JOYSTICK_X_REVERSED ? JoystickEvent::Right : JoystickEvent::Left;
-  if (x > JOYSTICK_HIGH_THRESHOLD) return JOYSTICK_X_REVERSED ? JoystickEvent::Left : JoystickEvent::Right;
+  // Citeste ambele canale o singura data, pentru ca diagnosticul si decodorul
+  // sa descrie exact aceeasi pozitie a manetei.
+  lastJoystickAxis1 = analogRead(PIN_JOYSTICK_AXIS_1);
+  lastJoystickAxis2 = analogRead(PIN_JOYSTICK_AXIS_2);
+
+  // A0 este axa fizica verticala in acest montaj; ea nu ajunge la adjustWpm().
+  if (lastJoystickAxis1 > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Up;
+  if (lastJoystickAxis1 < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Down;
+  // A1 este axa fizica orizontala. Valoarea mare este dreapta fizica.
+  if (lastJoystickAxis2 < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Left;
+  if (lastJoystickAxis2 > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Right;
   return JoystickEvent::None;
+}
+
+const char *joystickEventName(JoystickEvent event) {
+  switch (event) {
+    case JoystickEvent::Up: return "UP";
+    case JoystickEvent::Down: return "DOWN";
+    case JoystickEvent::Left: return "LEFT";
+    case JoystickEvent::Right: return "RIGHT";
+    default: return "NONE";
+  }
+}
+
+void logWpmJoystickDiagnostic(JoystickEvent event, int wpmBefore, int wpmAfter) {
+  if (!JOYSTICK_DIAGNOSTICS) return;
+  Serial.print(F("Joystick raw: axis1=")); Serial.print(lastJoystickAxis1);
+  Serial.print(F(", axis2=")); Serial.println(lastJoystickAxis2);
+  Serial.print(F("Detected physical direction: ")); Serial.println(joystickEventName(event));
+  Serial.print(F("WPM before: ")); Serial.println(wpmBefore);
+  Serial.print(F("WPM after: ")); Serial.println(wpmAfter);
 }
 
 JoystickEvent updateJoystick() {
@@ -303,7 +329,12 @@ void updateMenu(JoystickEvent event) {
   } else if (appState == AppState::WpmSettings) {
     // In setarile WPM, doar directia orizontala modifica viteza:
     // dreapta creste, iar stanga scade.
+    int wpmBefore = currentWpm;
     adjustWpm(event);
+    if (event == JoystickEvent::Up || event == JoystickEvent::Down ||
+        event == JoystickEvent::Left || event == JoystickEvent::Right) {
+      logWpmJoystickDiagnostic(event, wpmBefore, currentWpm);
+    }
     if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
   }
 }
@@ -467,6 +498,7 @@ void updateTraining(JoystickEvent event) {
 }
 
 void setup() {
+  Serial.begin(115200);
   pinMode(buzzerPin, OUTPUT);
   pinMode(keyPin, INPUT_PULLUP);
   pinMode(PIN_JOYSTICK_SW, INPUT_PULLUP);
