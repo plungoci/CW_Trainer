@@ -224,7 +224,7 @@ shared with any new connector.
 | --- | --- | --- |
 | Existing button/key | D7 | `INPUT_PULLUP`, active LOW (unchanged) |
 | Active buzzer | D8 | Output (unchanged) |
-| KY-023 VRx / VRy | A0 / A1 | 10-bit ADC inputs |
+| KY-023 axis 1 / axis 2 | A0 / A1 | 10-bit ADC inputs; actual physical orientation is calibrated in the sketch |
 | KY-023 SW | D2 | `INPUT_PULLUP`, active LOW |
 | Straight-key jack signal | D3 | `INPUT_PULLUP`, active LOW |
 | Paddle TRS Tip (DIT) | D4 | `INPUT_PULLUP`, active LOW |
@@ -236,8 +236,8 @@ Connections:
 ```text
 KY-023 GND -> Nano GND
 KY-023 VCC -> Nano 5V
-KY-023 VRx -> A0
-KY-023 VRy -> A1
+KY-023 axis 1 -> A0
+KY-023 axis 2 -> A1
 KY-023 SW  -> D2
 
 Straight-key jack signal -> D3
@@ -258,7 +258,10 @@ safe voltage. Some paddles reverse Tip/Ring; swap `PIN_PADDLE_DIT` and
 
 Use the joystick up/down to move. In the WPM settings, move it right to
 increase the speed and left to decrease it; short press to select, and hold SW
-for 800 ms to return/stop training. The 10-bit ADC thresholds,
+for 800 ms to return/stop training. On the calibrated unit, physical up/down
+change A0 (up: `>700`, down: `<300`) and physical right/left change A1 (right:
+`>700`, left: `<300`). This is intentionally based on observed ADC channels,
+not the VRx/VRy labels. The 10-bit ADC thresholds,
 repeat timing, WPM range (5--50), and all pin assignments are centralized at
 the beginning of `cw_trainer.ino`. DIT and DAH held together alternate the next
 element; this deliberately documented simple alternation is not yet iambic A/B
@@ -276,6 +279,10 @@ and is isolated so paddle memory/iambic modes can be added later.
    each held, and both together; changing WPM must change their element length.
 5. Confirm LCD, buzzer, and I2C wiring remain functional before enclosing the
    device.
+6. Open Serial Monitor at 115200 baud in the WPM screen. Each detected
+   direction prints both raw ADC values, the physical direction, and WPM before
+   and after. Verify right increases WPM, left decreases it, and up/down leave
+   it unchanged before disabling `JOYSTICK_DIAGNOSTICS`.
 
 ## Troubleshooting
 
