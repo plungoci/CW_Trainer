@@ -24,6 +24,9 @@ constexpr int WPM_STEP = 1;
 // Nano are ADC pe 10 biti (0..1023); aceste praguri sunt usor de calibrat.
 constexpr int JOYSTICK_LOW_THRESHOLD = 300;
 constexpr int JOYSTICK_HIGH_THRESHOLD = 700;
+// Majoritatea modulelor KY-023 citesc o valoare mica la stanga si una mare la
+// dreapta. Inverseaza doar aceasta optiune daca modulul montat are axa X inversata.
+constexpr bool JOYSTICK_X_REVERSED = false;
 constexpr unsigned long JOYSTICK_INITIAL_REPEAT_MS = 350;
 constexpr unsigned long JOYSTICK_REPEAT_MS = 140;
 constexpr unsigned long JOYSTICK_DEBOUNCE_MS = 25;
@@ -187,11 +190,12 @@ void buildPhraseMorse(const char *phrase, char *destination, size_t destinationS
 JoystickEvent directionFromJoystick() {
   int x = analogRead(PIN_JOYSTICK_X);
   int y = analogRead(PIN_JOYSTICK_Y);
-  // Orientarea poate fi inversata fizic; pragurile si maparea sunt centralizate aici.
+  // Pastreaza maparea verticala pentru navigarea celorlalte meniuri.
   if (y < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Up;
   if (y > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Down;
-  if (x < JOYSTICK_LOW_THRESHOLD) return JoystickEvent::Left;
-  if (x > JOYSTICK_HIGH_THRESHOLD) return JoystickEvent::Right;
+  // Maparea axei X asigura intotdeauna ca Right inseamna dreapta fizica.
+  if (x < JOYSTICK_LOW_THRESHOLD) return JOYSTICK_X_REVERSED ? JoystickEvent::Right : JoystickEvent::Left;
+  if (x > JOYSTICK_HIGH_THRESHOLD) return JOYSTICK_X_REVERSED ? JoystickEvent::Left : JoystickEvent::Right;
   return JoystickEvent::None;
 }
 
@@ -259,8 +263,18 @@ void startTraining() {
 
 void adjustWpm(JoystickEvent event) {
   int requestedWpm = currentWpm;
-  if (event == JoystickEvent::Right) requestedWpm += WPM_STEP;
-  if (event == JoystickEvent::Left) requestedWpm -= WPM_STEP;
+  // Reglarea vitezei accepta exclusiv evenimentele produse de axa orizontala.
+  // Up si Down nu pot modifica WPM in acest ecran.
+  switch (event) {
+    case JoystickEvent::Right:
+      requestedWpm += WPM_STEP;
+      break;
+    case JoystickEvent::Left:
+      requestedWpm -= WPM_STEP;
+      break;
+    default:
+      return;
+  }
 
   // Clamp the requested speed so a changed step size can never cross a limit.
   requestedWpm = constrain(requestedWpm, MIN_WPM, MAX_WPM);
