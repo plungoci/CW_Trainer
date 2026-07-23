@@ -447,7 +447,10 @@ void setup() {
   recalculateMorseTiming();
   Wire.begin(); lcd.begin(); lcd.backlight();
   randomSeed(analogRead(A2));  // A2 ramane liber dupa alocarea joystick-ului pe A0/A1.
-  lcd.clear(); lcd.setCursor(0, 0); lcd.print("CW Trainer"); lcd.setCursor(0, 1); lcd.print(currentWpm); lcd.print(" WPM");
+  lcd.clear();
+  lcd.setCursor(0, 0); lcd.print("CW Trainer");
+  lcd.setCursor(0, 1); lcd.print("YO6LPG");
+  delay(2000);
   displayDirty = true;
 }
 
