@@ -256,12 +256,15 @@ the KY-023 from 5 V on this board; do **not** use that recommendation on a
 safe voltage. Some paddles reverse Tip/Ring; swap `PIN_PADDLE_DIT` and
 `PIN_PADDLE_DAH` in the centralized configuration if necessary.
 
-Use the joystick up/down to move. In the WPM settings, move it right to
-increase the speed and left to decrease it; short press to select, and hold SW
-for 800 ms to return/stop training. On the calibrated unit, physical up/down
-change A0 (up: `>700`, down: `<300`) and physical right/left change A1 (right:
-`>700`, left: `<300`). This is intentionally based on observed ADC channels,
-not the VRx/VRy labels. The 10-bit ADC thresholds,
+Use the joystick right/left to move to the next/previous main-menu item; for
+example, right moves from **Training** to **Viteza WPM**. Short-press SW to
+open the highlighted item. In **Training**, use left/right to choose the
+preferred training type, then short-press SW again to save it. In **Viteza
+WPM**, right increases the speed and left decreases it; up/down do not change
+WPM. Hold SW for 800 ms to return/stop training. On the calibrated unit,
+physical up/down change A0 (up: `>700`, down: `<300`) and physical right/left
+change A1 (right: `>700`, left: `<300`). This is intentionally based on
+observed ADC channels, not the VRx/VRy labels. The 10-bit ADC thresholds,
 repeat timing, WPM range (5--50), and all pin assignments are centralized at
 the beginning of `cw_trainer.ino`. DIT and DAH held together alternate the next
 element; this deliberately documented simple alternation is not yet iambic A/B
@@ -269,17 +272,21 @@ and is isolated so paddle memory/iambic modes can be added later.
 
 #### Hardware regression checklist
 
-1. Verify neutral joystick gives no menu movement; test up/down, held repeat,
-   left/right WPM adjustment, short select, and long return at both WPM limits.
-2. Select Letters, Numbers, and Phrases; start and long-press SW to stop.
-3. From the menu and during an answer, press and hold the original D7 button:
+1. Verify neutral joystick gives no menu movement; test left/right main-menu
+   traversal and held repeat, short select, and long return at both WPM limits.
+2. Open **Training** with a short press, select Letters, Numbers, and Phrases
+   with left/right, and short-press again to save each selection. Start and
+   long-press SW to stop.
+3. Open **Viteza WPM** with a short press. Verify right increases WPM, left
+   decreases it, and up/down leave it unchanged.
+4. From the menu and during an answer, press and hold the original D7 button:
    it must still start training, sound while held, and classify short/long
    presses as dot/dash without interaction from the joystick or jacks.
-4. Test straight key press/release/hold for immediate sidetone. Test DIT, DAH,
+5. Test straight key press/release/hold for immediate sidetone. Test DIT, DAH,
    each held, and both together; changing WPM must change their element length.
-5. Confirm LCD, buzzer, and I2C wiring remain functional before enclosing the
+6. Confirm LCD, buzzer, and I2C wiring remain functional before enclosing the
    device.
-6. Open Serial Monitor at 115200 baud in the WPM screen. Each detected
+7. Open Serial Monitor at 115200 baud in the WPM screen. Each detected
    direction prints both raw ADC values, the physical direction, and WPM before
    and after. Verify right increases WPM, left decreases it, and up/down leave
    it unchanged before disabling `JOYSTICK_DIAGNOSTICS`.

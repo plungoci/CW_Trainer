@@ -23,6 +23,7 @@ constexpr int DEFAULT_WPM = 15;
 constexpr int MIN_WPM = 5;
 constexpr int MAX_WPM = 50;
 constexpr int WPM_STEP = 1;
+constexpr byte MAIN_MENU_ITEM_COUNT = 4;
 // Nano are ADC pe 10 biti (0..1023); aceste praguri sunt usor de calibrat.
 constexpr int JOYSTICK_LOW_THRESHOLD = 300;
 constexpr int JOYSTICK_HIGH_THRESHOLD = 700;
@@ -314,9 +315,13 @@ void adjustWpm(JoystickEvent event) {
 void updateMenu(JoystickEvent event) {
   if (appState == AppState::Training) return;
   if (appState == AppState::MainMenu) {
-    if (event == JoystickEvent::Up && menuIndex > 0) { --menuIndex; displayDirty = true; }
-    if (event == JoystickEvent::Down && menuIndex < 3) { ++menuIndex; displayDirty = true; }
-    if (event == JoystickEvent::ShortPress || event == JoystickEvent::Right) {
+    // Meniul principal se parcurge exclusiv pe axa orizontala: dreapta pentru
+    // urmatorul element si stanga pentru cel anterior. Butonul SW confirma
+    // elementul afisat, astfel incat dreapta nu poate deschide accidental un
+    // ecran de setari.
+    if (event == JoystickEvent::Left && menuIndex > 0) { --menuIndex; displayDirty = true; }
+    if (event == JoystickEvent::Right && menuIndex < MAIN_MENU_ITEM_COUNT - 1) { ++menuIndex; displayDirty = true; }
+    if (event == JoystickEvent::ShortPress) {
       if (menuIndex == 0) { appState = AppState::TrainingSelection; selectionIndex = static_cast<byte>(trainingMode); displayDirty = true; }
       else if (menuIndex == 1) { appState = AppState::WpmSettings; displayDirty = true; }
       else if (menuIndex == 2) startTraining();
