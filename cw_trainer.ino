@@ -257,6 +257,20 @@ void startTraining() {
   displayDirty = true;
 }
 
+void adjustWpm(JoystickEvent event) {
+  int requestedWpm = currentWpm;
+  if (event == JoystickEvent::Right) requestedWpm += WPM_STEP;
+  if (event == JoystickEvent::Left) requestedWpm -= WPM_STEP;
+
+  // Clamp the requested speed so a changed step size can never cross a limit.
+  requestedWpm = constrain(requestedWpm, MIN_WPM, MAX_WPM);
+  if (requestedWpm == currentWpm) return;
+
+  currentWpm = requestedWpm;
+  recalculateMorseTiming();
+  displayDirty = true;
+}
+
 void updateMenu(JoystickEvent event) {
   if (appState == AppState::Training) return;
   if (appState == AppState::MainMenu) {
@@ -275,8 +289,7 @@ void updateMenu(JoystickEvent event) {
   } else if (appState == AppState::WpmSettings) {
     // In setarile WPM, doar directia orizontala modifica viteza:
     // dreapta creste, iar stanga scade.
-    if (event == JoystickEvent::Right && currentWpm < MAX_WPM) { currentWpm += WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
-    if (event == JoystickEvent::Left && currentWpm > MIN_WPM) { currentWpm -= WPM_STEP; recalculateMorseTiming(); displayDirty = true; }
+    adjustWpm(event);
     if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
   }
 }
