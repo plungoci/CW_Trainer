@@ -25,10 +25,13 @@ oferă feedback imediat.
 2. După apăsare, dispozitivul alege un caracter dintre `A`–`Z` și `0`–`9`, îl afișează cu
    codul Morse pe LCD și redă ritmul prin buzzer.
 3. Apasă cheia pentru a reproduce codul: o apăsare mai scurtă de două unități
-   de timp este un punct, una mai lungă este o linie, iar o pauză de cinci
-   unități finalizează caracterul.
-4. Ecranul afișează `CORECT!`, `GRESIT` sau `Timp expirat`, împreună cu
-   răspunsul așteptat. Răspunsul trebuie început în maximum 10 secunde.
+   de timp este un punct, iar una mai lungă este o linie. În timpul răspunsului,
+   LCD-ul arată ținta (`T:`), modelul Morse cu semnalele separate prin spații și
+   încadrează în `[]` următorul punct sau următoarea linie care trebuie introdusă.
+   În fraze, `/` separă literele și `//` separă cuvintele.
+4. După fiecare semnal corect, evidențierea avansează. La un semnal greșit,
+   LCD-ul afișează `GRESIT! Incearca`, păstrează semnalul curent și permite o
+   nouă încercare; după întreaga secvență afișează `CORECT!`.
 
 ### Lista de componente
 
@@ -134,9 +137,12 @@ and buzzer provide immediate feedback.
 3. Press the key to reproduce the code you heard:
    - a press shorter than two time units is a dot;
    - a longer press is a dash;
-   - a five-time-unit pause completes the character.
-4. The display shows `CORECT!`, `GRESIT`, or `Timp expirat`, together with the
-   expected answer. The response must start within 10 seconds.
+   - while answering, the LCD shows the target (`T:`), spaces between Morse
+     signals, and wraps the next required signal in `[]`. In phrases, `/`
+     separates letters and `//` separates words.
+4. Each correct signal advances the highlight. A wrong signal shows
+   `GRESIT! Incearca`, keeps the current signal highlighted, and can be retried;
+   completing the full sequence shows `CORECT!`.
 
 ## Bill of materials
 

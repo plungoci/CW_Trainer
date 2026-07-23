@@ -30,7 +30,6 @@ constexpr unsigned long JOYSTICK_DEBOUNCE_MS = 25;
 constexpr unsigned long JOYSTICK_LONG_PRESS_MS = 800;
 constexpr unsigned long KEY_DEBOUNCE_MS = 12;
 constexpr unsigned long answerTimeout = 10000UL;
-constexpr byte maxMorseLength = 5;
 
 struct MorseTiming {
   unsigned long dit;
@@ -77,16 +76,20 @@ bool outputFinished = false;
 
 char targetText[17];
 char targetCode[110];
-char receivedCode[maxMorseLength + 1];
-byte receivedLength = 0;
 bool answerStarted = false;
 bool previousExistingKeyDown = false;
 unsigned long existingKeyChangedAt = 0;
 unsigned long existingKeyDownAt = 0;
 unsigned long answerStartedAt = 0;
-unsigned long lastExistingKeyReleaseAt = 0;
 unsigned long phaseStartedAt = 0;
 bool answerCorrect = false;
+
+void acceptAnswerSignal(char signal);
+// Pozitia urmatorului semnal care trebuie introdus. Separatorii din targetCode
+// ('/' intre litere si '|' intre cuvinte) nu necesita o apasare a cheii.
+byte expectedPosition = 0;
+bool answerHasError = false;
+unsigned long answerErrorShownAt = 0;
 
 bool previousStraightDown = false;
 unsigned long straightChangedAt = 0;
@@ -294,11 +297,7 @@ void updateExistingKeyButton() {
     } else if (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer) {
       soundOff();
       unsigned long pressDuration = now - existingKeyDownAt;
-      if (pressDuration >= 15 && receivedLength < maxMorseLength) {
-        receivedCode[receivedLength++] = pressDuration < timing.dit * 2UL ? '.' : '-';
-        receivedCode[receivedLength] = '\0';
-      }
-      lastExistingKeyReleaseAt = now;
+      if (pressDuration >= 15) acceptAnswerSignal(pressDuration < timing.dit * 2UL ? '.' : '-');
     }
   }
 }
@@ -348,6 +347,68 @@ void showTrainingLine(const char *top, const char *bottom) {
   lcd.clear(); lcd.setCursor(0, 0); printPadded(top); lcd.setCursor(0, 1); printPadded(bottom);
 }
 
+// Construieste o fereastra de maximum 16 coloane din modelul Morse. Fiecare
+// semnal este delimitat de spatii, iar cel care urmeaza este incadrat in [];
+// pentru fraze, '/' separa literele iar '//' separa cuvintele.
+void formatMorseModel(char *destination, size_t destinationSize) {
+  destination[0] = '\0';
+  size_t used = 0;
+  byte start = expectedPosition;
+  // Arata si cateva elemente deja introduse, ca utilizatorul sa poata urmari
+  // progresul, fara a ascunde urmatorul element pe LCD-ul de 16 coloane.
+  while (start > 0 && expectedPosition - start < 3) --start;
+  for (byte i = start; targetCode[i] != '\0'; ++i) {
+    char token[6];
+    if (targetCode[i] == '|') strcpy(token, " // ");
+    else if (targetCode[i] == '/') strcpy(token, " / ");
+    else if (i == expectedPosition) {
+      token[0] = '['; token[1] = targetCode[i]; token[2] = ']'; token[3] = ' '; token[4] = '\0';
+    } else {
+      token[0] = targetCode[i]; token[1] = ' '; token[2] = '\0';
+    }
+    size_t tokenLength = strlen(token);
+    if (used + tokenLength >= destinationSize) break;
+    strcpy(destination + used, token);
+    used += tokenLength;
+  }
+}
+
+void skipMorseSeparators() {
+  while (targetCode[expectedPosition] == '/' || targetCode[expectedPosition] == '|') ++expectedPosition;
+}
+
+void showAnswerPrompt() {
+  char targetLine[17];
+  char modelLine[17];
+  snprintf(targetLine, sizeof(targetLine), "T:%s", targetText);
+  formatMorseModel(modelLine, sizeof(modelLine));
+  showTrainingLine(targetLine, modelLine);
+}
+
+void acceptAnswerSignal(char signal) {
+  skipMorseSeparators();
+  answerStarted = true;
+  if (targetCode[expectedPosition] == signal) {
+    ++expectedPosition;
+    skipMorseSeparators();
+    answerHasError = false;
+    if (targetCode[expectedPosition] == '\0') {
+      answerCorrect = true;
+      showTrainingLine("CORECT!", "Secventa completa");
+      trainingPhase = TrainingPhase::Result;
+      phaseStartedAt = millis();
+    } else {
+      showAnswerPrompt();
+    }
+  } else {
+    // Nu avansam pozitia: acelasi punct sau linie ramane evidentiat si poate
+    // fi incercat din nou.
+    answerHasError = true;
+    answerErrorShownAt = millis();
+    showTrainingLine("GRESIT! Incearca", "din nou");
+  }
+}
+
 void updateTraining(JoystickEvent event) {
   if (appState != AppState::Training) return;
   unsigned long now = millis();
@@ -362,17 +423,14 @@ void updateTraining(JoystickEvent event) {
     startMorseOutput(targetCode); trainingPhase = TrainingPhase::Playing;
   } else if (trainingPhase == TrainingPhase::Playing && outputFinished) {
     outputFinished = false; phaseStartedAt = now; trainingPhase = TrainingPhase::WaitAnswer;
-    receivedLength = 0; receivedCode[0] = '\0'; answerStarted = false; answerStartedAt = now;
-    showTrainingLine("Reproduce:", "D7; lung=meniu");
+    expectedPosition = 0; answerStarted = false; answerHasError = false; answerStartedAt = now;
+    showAnswerPrompt();
   } else if (trainingPhase == TrainingPhase::WaitAnswer) {
-    if (answerStarted && now - lastExistingKeyReleaseAt >= timing.characterGap + timing.dit * 2UL) {
-      answerCorrect = strcmp(targetCode, receivedCode) == 0;
-      char line[17]; snprintf(line, sizeof(line), "%s = %s", targetText, targetCode);
-      showTrainingLine(answerCorrect ? "CORECT!" : "GRESIT:", line);
-      trainingPhase = TrainingPhase::Result; phaseStartedAt = now;
+    if (answerHasError && now - answerErrorShownAt >= 1200) {
+      answerHasError = false;
+      showAnswerPrompt();
     } else if (!answerStarted && now - answerStartedAt >= answerTimeout) {
-      char line[17]; snprintf(line, sizeof(line), "%s = %s", targetText, targetCode);
-      showTrainingLine("Timp expirat", line); trainingPhase = TrainingPhase::Result; phaseStartedAt = now;
+      showTrainingLine("Timp expirat", "Incearca din nou"); trainingPhase = TrainingPhase::Result; phaseStartedAt = now;
     }
   } else if (trainingPhase == TrainingPhase::Result && now - phaseStartedAt >= 3000) {
     trainingPhase = TrainingPhase::Choose;
