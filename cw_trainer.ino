@@ -64,7 +64,7 @@ const char *const morseCodes[] = {
 constexpr byte LETTER_COUNT = 26;
 constexpr byte CHARACTER_COUNT = sizeof(characters) - 1;
 // Frazele sunt stocate in flash ca date constante; extinde lista fara RAM dinamic.
-const char phrases[][17] = { "CQ CQ", "TEST ONE", "HELLO WORLD", "73 DE YO" };
+const char phrases[][17] = { "CQ CQ", "TEST ONE", "HELLO WORLD", "73 DE YO6LPG" };
 constexpr byte PHRASE_COUNT = sizeof(phrases) / sizeof(phrases[0]);
 
 // Motorul comun pentru demonstratie si paddle. Nu foloseste delay().
