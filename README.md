@@ -20,8 +20,8 @@ oferă feedback imediat.
 
 ### Cum funcționează
 
-1. La pornire, ecranul afișează viteza configurată (**15 WPM** implicit), apoi
-   solicită apăsarea butonului pentru pornirea testului.
+1. La pornire, ecranul afișează `CW Trainer` pe primul rând și `YO6LPG` pe al
+   doilea rând timp de două secunde, apoi afișează meniul principal.
 2. După apăsare, dispozitivul alege un caracter dintre `A`–`Z` și `0`–`9`, îl afișează cu
    codul Morse pe LCD și redă ritmul prin buzzer.
 3. Apasă cheia pentru a reproduce codul: o apăsare mai scurtă de două unități
@@ -129,8 +129,8 @@ and buzzer provide immediate feedback.
 
 ## How it works
 
-1. At startup, the display shows the configured speed (**15 WPM** by default),
-   then asks you to press the button to start the test.
+1. At startup, the display shows `CW Trainer` on the first line and `YO6LPG`
+   on the second line for two seconds, then shows the main menu.
 2. After the press, the device randomly selects a character from `A`–`Z` and `0`–`9`, displays
    the character and its Morse code on the LCD, and plays its rhythm through the
    buzzer.
