@@ -63,8 +63,8 @@ GND când este apăsat. Nu este necesară o rezistență externă de pull-up.
 | KY-023 axa verticală / orizontală | A0 / A1 | Intrări ADC pe 10 biți. |
 | KY-023 SW | D2 | `INPUT_PULLUP`, activ LOW. |
 | Cheie simplă | D3 / GND | `INPUT_PULLUP`, activ LOW. |
-| Paddle DIT (Tip) | D4 | `INPUT_PULLUP`, activ LOW. |
-| Paddle DAH (Ring) | D5 | `INPUT_PULLUP`, activ LOW. |
+| Paddle DIT (Tip) | D5 | `INPUT_PULLUP`, activ LOW. |
+| Paddle DAH (Ring) | D4 | `INPUT_PULLUP`, activ LOW. |
 | Paddle masă (Sleeve) | GND |  |
 
 Pentru montajul calibrat, A0 este sus la valori `>700` și jos la `<300`, iar
