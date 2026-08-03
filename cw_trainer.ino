@@ -63,10 +63,13 @@ byte testMenuIndex = 0;
 bool displayDirty = true;
 
 // Buffer comun pentru ecranele de test hardware: acumuleaza simbolurile
-// tastate pentru litera curenta si textul deja decodat (afisat derulant).
+// tastate pentru litera curenta si textul deja decodat. Titlul ecranului
+// ramane fix pe randul de sus; randul de jos arata textul decodat urmat de
+// codul Morse curent, neterminat, intre paranteze drepte.
+constexpr byte TEST_KEYER_TEXT_CAP = 32;
 char testKeyerCode[9];
 byte testKeyerCodeLength = 0;
-char testKeyerText[17];
+char testKeyerText[TEST_KEYER_TEXT_CAP + 1];
 byte testKeyerTextLength = 0;
 unsigned long testKeyerLastSymbolAt = 0;
 bool testKeyerHasPendingSymbol = false;
@@ -481,8 +484,10 @@ void showTrainingLine(const char *top, const char *bottom) {
 // pentru cheia simpla cat si pentru padele. Sidetone-ul ramane cel produs
 // direct aici (nu de updateStraightKey()/updatePaddle(), care raman blocate
 // in aceste stari ca sa nu porneasca si motorul automat de morse).
-// Randul de sus arata textul deja decodat (deruleaza), randul de jos arata
-// codul Morse brut al literei curente, inca neterminata.
+// Randul de sus ramane titlul fix al ecranului, ca sa fie clar ca s-a
+// intrat intr-o pagina noua. Randul de jos arata textul deja decodat, urmat
+// de codul Morse curent (inca neterminat) intre paranteze drepte; cand
+// depaseste 16 coloane, se afiseaza doar coada, cea mai recenta parte.
 char decodeMorseSymbol(const char *code) {
   for (byte i = 0; i < CHARACTER_COUNT; ++i) {
     if (strcmp(morseCodes[i], code) == 0) return characters[i];
@@ -498,6 +503,19 @@ void resetTestKeyer() {
   testKeyerHasPendingSymbol = false;
 }
 
+void renderTestKeyerLine() {
+  char combined[TEST_KEYER_TEXT_CAP + sizeof(testKeyerCode) + 2];
+  if (testKeyerCodeLength > 0) {
+    snprintf(combined, sizeof(combined), "%s[%s]", testKeyerText, testKeyerCode);
+  } else {
+    snprintf(combined, sizeof(combined), "%s", testKeyerText);
+  }
+  size_t length = strlen(combined);
+  const char *tail = length > 16 ? combined + (length - 16) : combined;
+  lcd.setCursor(0, 1);
+  printPadded(tail);
+}
+
 void appendTestKeyerSymbol(char symbol) {
   if (testKeyerCodeLength + 1 < sizeof(testKeyerCode)) {
     testKeyerCode[testKeyerCodeLength++] = symbol;
@@ -505,19 +523,16 @@ void appendTestKeyerSymbol(char symbol) {
   }
   testKeyerHasPendingSymbol = true;
   testKeyerLastSymbolAt = millis();
-  lcd.setCursor(0, 1);
-  printPadded(testKeyerCode);
+  renderTestKeyerLine();
 }
 
 void appendTestKeyerChar(char decoded) {
-  if (testKeyerTextLength >= sizeof(testKeyerText) - 1) {
+  if (testKeyerTextLength >= TEST_KEYER_TEXT_CAP) {
     memmove(testKeyerText, testKeyerText + 1, testKeyerTextLength - 1);
     --testKeyerTextLength;
   }
   testKeyerText[testKeyerTextLength++] = decoded;
   testKeyerText[testKeyerTextLength] = '\0';
-  lcd.setCursor(0, 0);
-  printPadded(testKeyerText);
 }
 
 // Apelata in fiecare bucla cat suntem intr-un ecran de test: daca a trecut un
@@ -531,8 +546,7 @@ void updateTestKeyerDecode() {
     testKeyerCode[0] = '\0';
     testKeyerCodeLength = 0;
     testKeyerHasPendingSymbol = false;
-    lcd.setCursor(0, 1);
-    printPadded("");
+    renderTestKeyerLine();
   }
 }
 
@@ -542,7 +556,7 @@ void enterKeyTest() {
   resetTestKeyer();
   previousKeyTestDown = digitalRead(PIN_STRAIGHT_KEY) == LOW;
   keyTestChangedAt = millis();
-  showTrainingLine("", "");
+  showTrainingLine("Test Cheie CW", "");
   displayDirty = false;
 }
 
@@ -578,7 +592,7 @@ void enterPaddleTest() {
   previousPaddleTestDahDown = digitalRead(PIN_PADDLE_DAH) == LOW;
   paddleTestDitChangedAt = now;
   paddleTestDahChangedAt = now;
-  showTrainingLine("", "");
+  showTrainingLine("Test Paddle CW", "");
   displayDirty = false;
 }
 
