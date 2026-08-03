@@ -61,9 +61,24 @@ byte menuIndex = 0;
 byte selectionIndex = 0;
 byte testMenuIndex = 0;
 bool displayDirty = true;
-bool lastKeyTestDown = false;
-bool lastPaddleTestDit = false;
-bool lastPaddleTestDah = false;
+
+// Buffer comun pentru ecranele de test hardware: acumuleaza simbolurile
+// tastate pentru litera curenta si textul deja decodat (afisat derulant).
+char testKeyerCode[9];
+byte testKeyerCodeLength = 0;
+char testKeyerText[17];
+byte testKeyerTextLength = 0;
+unsigned long testKeyerLastSymbolAt = 0;
+bool testKeyerHasPendingSymbol = false;
+
+bool previousKeyTestDown = false;
+unsigned long keyTestChangedAt = 0;
+unsigned long keyTestDownAt = 0;
+
+bool previousPaddleTestDitDown = false;
+unsigned long paddleTestDitChangedAt = 0;
+bool previousPaddleTestDahDown = false;
+unsigned long paddleTestDahChangedAt = 0;
 
 const char characters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const char *const morseCodes[] = {
@@ -392,6 +407,7 @@ void updateExistingKeyButton() {
 
 // Straight key este independent de D7 si are sidetone imediat, cu filtrare scurta.
 void updateStraightKey() {
+  if (appState == AppState::KeyTest) return;  // sidetone-ul e gestionat de updateKeyTest().
   unsigned long now = millis();
   bool down = digitalRead(PIN_STRAIGHT_KEY) == LOW;
   if (down != previousStraightDown && now - straightChangedAt >= KEY_DEBOUNCE_MS) {
@@ -427,6 +443,7 @@ void updatePaddleAnswer() {
 // Keyer simplu non-iambic: la ambele padele selecteaza alternativ DIT/DAH.
 // Este delimitat aici pentru extindere ulterioara cu memoria padelelor/Mode A/B.
 void updatePaddle() {
+  if (appState == AppState::PaddleTest) return;  // sidetone-ul e gestionat de updatePaddleTest().
   if (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer) {
     updatePaddleAnswer();
     return;
@@ -460,15 +477,72 @@ void showTrainingLine(const char *top, const char *bottom) {
   lcd.clear(); lcd.setCursor(0, 0); printPadded(top); lcd.setCursor(0, 1); printPadded(bottom);
 }
 
-// Ecrane de diagnostic hardware: afiseaza in timp real starea cheii/padelelor,
-// utile la verificarea cablajului. Sidetone-ul ramane cel produs deja de
-// updateStraightKey()/updatePaddle(), care functioneaza in orice stare in
-// afara de Training/WaitAnswer.
+// Ecrane de diagnostic hardware: afiseaza in timp real ce se tasteaza, atat
+// pentru cheia simpla cat si pentru padele. Sidetone-ul ramane cel produs
+// direct aici (nu de updateStraightKey()/updatePaddle(), care raman blocate
+// in aceste stari ca sa nu porneasca si motorul automat de morse).
+// Randul de sus arata textul deja decodat (deruleaza), randul de jos arata
+// codul Morse brut al literei curente, inca neterminata.
+char decodeMorseSymbol(const char *code) {
+  for (byte i = 0; i < CHARACTER_COUNT; ++i) {
+    if (strcmp(morseCodes[i], code) == 0) return characters[i];
+  }
+  return '?';
+}
+
+void resetTestKeyer() {
+  testKeyerCode[0] = '\0';
+  testKeyerCodeLength = 0;
+  testKeyerText[0] = '\0';
+  testKeyerTextLength = 0;
+  testKeyerHasPendingSymbol = false;
+}
+
+void appendTestKeyerSymbol(char symbol) {
+  if (testKeyerCodeLength + 1 < sizeof(testKeyerCode)) {
+    testKeyerCode[testKeyerCodeLength++] = symbol;
+    testKeyerCode[testKeyerCodeLength] = '\0';
+  }
+  testKeyerHasPendingSymbol = true;
+  testKeyerLastSymbolAt = millis();
+  lcd.setCursor(0, 1);
+  printPadded(testKeyerCode);
+}
+
+void appendTestKeyerChar(char decoded) {
+  if (testKeyerTextLength >= sizeof(testKeyerText) - 1) {
+    memmove(testKeyerText, testKeyerText + 1, testKeyerTextLength - 1);
+    --testKeyerTextLength;
+  }
+  testKeyerText[testKeyerTextLength++] = decoded;
+  testKeyerText[testKeyerTextLength] = '\0';
+  lcd.setCursor(0, 0);
+  printPadded(testKeyerText);
+}
+
+// Apelata in fiecare bucla cat suntem intr-un ecran de test: daca a trecut un
+// gol de tip "spatiu intre litere" de la ultimul simbol, litera curenta se
+// considera incheiata si este decodata.
+void updateTestKeyerDecode() {
+  if (!testKeyerHasPendingSymbol) return;
+  if (millis() - testKeyerLastSymbolAt >= timing.characterGap) {
+    char decoded = decodeMorseSymbol(testKeyerCode);
+    appendTestKeyerChar(decoded);
+    testKeyerCode[0] = '\0';
+    testKeyerCodeLength = 0;
+    testKeyerHasPendingSymbol = false;
+    lcd.setCursor(0, 1);
+    printPadded("");
+  }
+}
+
 void enterKeyTest() {
   appState = AppState::KeyTest;
   soundOff();
-  lastKeyTestDown = digitalRead(PIN_STRAIGHT_KEY) == LOW;
-  showTrainingLine("Test Cheie CW", lastKeyTestDown ? "Stare: APASAT" : "Stare: liber");
+  resetTestKeyer();
+  previousKeyTestDown = digitalRead(PIN_STRAIGHT_KEY) == LOW;
+  keyTestChangedAt = millis();
+  showTrainingLine("", "");
   displayDirty = false;
 }
 
@@ -480,27 +554,31 @@ void updateKeyTest(JoystickEvent event) {
     displayDirty = true;
     return;
   }
+  unsigned long now = millis();
   bool down = digitalRead(PIN_STRAIGHT_KEY) == LOW;
-  if (down != lastKeyTestDown) {
-    lastKeyTestDown = down;
-    lcd.setCursor(0, 1);
-    printPadded(down ? "Stare: APASAT" : "Stare: liber");
+  if (down != previousKeyTestDown && now - keyTestChangedAt >= KEY_DEBOUNCE_MS) {
+    previousKeyTestDown = down;
+    keyTestChangedAt = now;
+    if (down) { keyTestDownAt = now; soundOn(); }
+    else {
+      soundOff();
+      unsigned long pressDuration = now - keyTestDownAt;
+      if (pressDuration >= 15) appendTestKeyerSymbol(pressDuration < timing.dit * 2UL ? '.' : '-');
+    }
   }
-}
-
-void formatPaddleTestStatus(char *destination, size_t destinationSize) {
-  snprintf(destination, destinationSize, "DIT:%s DAH:%s",
-    lastPaddleTestDit ? "JOS" : "sus", lastPaddleTestDah ? "JOS" : "sus");
+  updateTestKeyerDecode();
 }
 
 void enterPaddleTest() {
   appState = AppState::PaddleTest;
   soundOff();
-  lastPaddleTestDit = digitalRead(PIN_PADDLE_DIT) == LOW;
-  lastPaddleTestDah = digitalRead(PIN_PADDLE_DAH) == LOW;
-  char status[17];
-  formatPaddleTestStatus(status, sizeof(status));
-  showTrainingLine("Test Paddle CW", status);
+  resetTestKeyer();
+  unsigned long now = millis();
+  previousPaddleTestDitDown = digitalRead(PIN_PADDLE_DIT) == LOW;
+  previousPaddleTestDahDown = digitalRead(PIN_PADDLE_DAH) == LOW;
+  paddleTestDitChangedAt = now;
+  paddleTestDahChangedAt = now;
+  showTrainingLine("", "");
   displayDirty = false;
 }
 
@@ -512,16 +590,22 @@ void updatePaddleTest(JoystickEvent event) {
     displayDirty = true;
     return;
   }
-  bool dit = digitalRead(PIN_PADDLE_DIT) == LOW;
-  bool dah = digitalRead(PIN_PADDLE_DAH) == LOW;
-  if (dit != lastPaddleTestDit || dah != lastPaddleTestDah) {
-    lastPaddleTestDit = dit;
-    lastPaddleTestDah = dah;
-    char status[17];
-    formatPaddleTestStatus(status, sizeof(status));
-    lcd.setCursor(0, 1);
-    printPadded(status);
+  unsigned long now = millis();
+  bool ditDown = digitalRead(PIN_PADDLE_DIT) == LOW;
+  if (ditDown != previousPaddleTestDitDown && now - paddleTestDitChangedAt >= KEY_DEBOUNCE_MS) {
+    previousPaddleTestDitDown = ditDown;
+    paddleTestDitChangedAt = now;
+    if (ditDown) soundOn();
+    else { soundOff(); appendTestKeyerSymbol('.'); }
   }
+  bool dahDown = digitalRead(PIN_PADDLE_DAH) == LOW;
+  if (dahDown != previousPaddleTestDahDown && now - paddleTestDahChangedAt >= KEY_DEBOUNCE_MS) {
+    previousPaddleTestDahDown = dahDown;
+    paddleTestDahChangedAt = now;
+    if (dahDown) soundOn();
+    else { soundOff(); appendTestKeyerSymbol('-'); }
+  }
+  updateTestKeyerDecode();
 }
 
 // Construieste o fereastra de maximum 16 coloane din modelul Morse. Fiecare
