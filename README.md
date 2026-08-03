@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="images/cw-trainer.png" alt="CW Trainer în carcasă" width="50%">
-   <img src="images/paddle.png" alt="CW Trainer în carcasă" width="50%">
+   <img src="images/paddle.png" alt="Descriere paddle" width="50%">
 </p>
 
 ---
