@@ -16,8 +16,8 @@ constexpr byte PIN_JOYSTICK_AXIS_1 = A0;
 constexpr byte PIN_JOYSTICK_AXIS_2 = A1;
 constexpr byte PIN_JOYSTICK_SW = 2;
 constexpr byte PIN_STRAIGHT_KEY = 3;
-constexpr byte PIN_PADDLE_DIT = 4;
-constexpr byte PIN_PADDLE_DAH = 5;
+constexpr byte PIN_PADDLE_DIT = 5;
+constexpr byte PIN_PADDLE_DAH = 4;
 
 constexpr int DEFAULT_WPM = 15;
 constexpr int MIN_WPM = 5;
