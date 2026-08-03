@@ -106,6 +106,11 @@ bool previousStraightDown = false;
 unsigned long straightChangedAt = 0;
 bool paddleLastWasDit = false;
 
+bool previousPaddleDitDown = false;
+unsigned long paddleDitChangedAt = 0;
+bool previousPaddleDahDown = false;
+unsigned long paddleDahChangedAt = 0;
+
 bool previousJoystickButtonDown = false;
 unsigned long joystickButtonChangedAt = 0;
 unsigned long joystickButtonDownAt = 0;
@@ -398,10 +403,35 @@ void updateStraightKey() {
   }
 }
 
+// In faza de raspuns, padela are contacte separate pentru punct/linie, deci
+// fiecare parghie trimite direct simbolul ei (spre deosebire de D7, care
+// masoara durata apasarii). Sidetone-ul tine cat parghia este apasata.
+void updatePaddleAnswer() {
+  unsigned long now = millis();
+  bool ditDown = digitalRead(PIN_PADDLE_DIT) == LOW;
+  if (ditDown != previousPaddleDitDown && now - paddleDitChangedAt >= KEY_DEBOUNCE_MS) {
+    previousPaddleDitDown = ditDown;
+    paddleDitChangedAt = now;
+    if (ditDown) { answerStarted = true; soundOn(); }
+    else { soundOff(); acceptAnswerSignal('.'); }
+  }
+  bool dahDown = digitalRead(PIN_PADDLE_DAH) == LOW;
+  if (dahDown != previousPaddleDahDown && now - paddleDahChangedAt >= KEY_DEBOUNCE_MS) {
+    previousPaddleDahDown = dahDown;
+    paddleDahChangedAt = now;
+    if (dahDown) { answerStarted = true; soundOn(); }
+    else { soundOff(); acceptAnswerSignal('-'); }
+  }
+}
+
 // Keyer simplu non-iambic: la ambele padele selecteaza alternativ DIT/DAH.
 // Este delimitat aici pentru extindere ulterioara cu memoria padelelor/Mode A/B.
 void updatePaddle() {
-  if (morseOutputBusy() || (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer)) return;
+  if (appState == AppState::Training && trainingPhase == TrainingPhase::WaitAnswer) {
+    updatePaddleAnswer();
+    return;
+  }
+  if (morseOutputBusy()) return;
   bool dit = digitalRead(PIN_PADDLE_DIT) == LOW;
   bool dah = digitalRead(PIN_PADDLE_DAH) == LOW;
   if (!dit && !dah) return;
