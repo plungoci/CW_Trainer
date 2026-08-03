@@ -4,7 +4,6 @@
 
 <p align="center">
   <img src="images/cw-trainer.png" alt="CW Trainer în carcasă" width="50%">
-   <img src="images/paddle.png" alt="Descriere paddle" width="50%">
 </p>
 
 ---
@@ -90,6 +89,10 @@ Alimentează KY-023 la 5 V numai cu acest Nano de 5 V. Pentru o placă cu ADC de
    automat după trei secunde.
 6. O apăsare lungă SW în timpul antrenamentului oprește runda și revine în
    meniul principal.
+
+<p align="center">
+   <img src="images/paddle.png" alt="Descriere paddle" width="100%">
+</p>
 
 ### Instalare și diagnosticare
 
