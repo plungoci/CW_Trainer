@@ -23,7 +23,8 @@ constexpr int DEFAULT_WPM = 15;
 constexpr int MIN_WPM = 5;
 constexpr int MAX_WPM = 50;
 constexpr int WPM_STEP = 1;
-constexpr byte MAIN_MENU_ITEM_COUNT = 4;
+constexpr byte MAIN_MENU_ITEM_COUNT = 5;
+constexpr byte TEST_MENU_ITEM_COUNT = 2;
 // Nano are ADC pe 10 biti (0..1023); aceste praguri sunt usor de calibrat.
 constexpr int JOYSTICK_LOW_THRESHOLD = 300;
 constexpr int JOYSTICK_HIGH_THRESHOLD = 700;
@@ -46,7 +47,7 @@ struct MorseTiming {
 };
 
 enum class TrainingMode { Letters, Numbers, Phrases };
-enum class AppState { MainMenu, TrainingSelection, WpmSettings, Training };
+enum class AppState { MainMenu, TrainingSelection, WpmSettings, Training, TestMenu, KeyTest, PaddleTest };
 enum class JoystickEvent { None, Up, Down, Left, Right, ShortPress, LongPress };
 enum class OutputPhase { Idle, Tone, Gap };
 enum class TrainingPhase { Choose, Preview, Playing, WaitAnswer, Result };
@@ -58,7 +59,11 @@ AppState appState = AppState::MainMenu;
 TrainingPhase trainingPhase = TrainingPhase::Choose;
 byte menuIndex = 0;
 byte selectionIndex = 0;
+byte testMenuIndex = 0;
 bool displayDirty = true;
+bool lastKeyTestDown = false;
+bool lastPaddleTestDit = false;
+bool lastPaddleTestDah = false;
 
 const char characters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const char *const morseCodes[] = {
@@ -263,12 +268,13 @@ void renderMenu() {
   if (!displayDirty) return;
   lcd.clear();
   if (appState == AppState::MainMenu) {
-    const char *items[] = { "Training", "Viteza WPM", "Start Training", "Inapoi" };
+    const char *items[] = { "Training", "Viteza WPM", "Start Training", "Test Hardware", "Inapoi" };
     lcd.setCursor(0, 0); lcd.print('>'); lcd.print(items[menuIndex]);
     lcd.setCursor(0, 1);
     if (menuIndex == 0) { lcd.print(modeName(trainingMode)); }
     else if (menuIndex == 1) { lcd.print(currentWpm); lcd.print(" WPM"); }
     else if (menuIndex == 2) lcd.print("Buton D7 = start");
+    else if (menuIndex == 3) lcd.print("Cheie / Paddle");
     else lcd.print("Apasa lung: sus");
   } else if (appState == AppState::TrainingSelection) {
     lcd.setCursor(0, 0); lcd.print("Training:");
@@ -276,6 +282,10 @@ void renderMenu() {
   } else if (appState == AppState::WpmSettings) {
     lcd.setCursor(0, 0); lcd.print("Viteza WPM");
     lcd.setCursor(0, 1); lcd.print("< "); lcd.print(currentWpm); lcd.print(" WPM >");
+  } else if (appState == AppState::TestMenu) {
+    const char *testItems[] = { "Test Cheie CW", "Test Paddle CW" };
+    lcd.setCursor(0, 0); lcd.print("Test Hardware:");
+    lcd.setCursor(0, 1); lcd.print('>'); lcd.print(testItems[testMenuIndex]);
   }
   displayDirty = false;
 }
@@ -313,7 +323,7 @@ void adjustWpm(JoystickEvent event) {
 }
 
 void updateMenu(JoystickEvent event) {
-  if (appState == AppState::Training) return;
+  if (appState == AppState::Training || appState == AppState::KeyTest || appState == AppState::PaddleTest) return;
   if (appState == AppState::MainMenu) {
     // Meniul principal se parcurge exclusiv pe axa orizontala: dreapta pentru
     // urmatorul element si stanga pentru cel anterior. Butonul SW confirma
@@ -325,7 +335,15 @@ void updateMenu(JoystickEvent event) {
       if (menuIndex == 0) { appState = AppState::TrainingSelection; selectionIndex = static_cast<byte>(trainingMode); displayDirty = true; }
       else if (menuIndex == 1) { appState = AppState::WpmSettings; displayDirty = true; }
       else if (menuIndex == 2) startTraining();
+      else if (menuIndex == 3) { appState = AppState::TestMenu; testMenuIndex = 0; displayDirty = true; }
     }
+  } else if (appState == AppState::TestMenu) {
+    if ((event == JoystickEvent::Up || event == JoystickEvent::Left) && testMenuIndex > 0) { --testMenuIndex; displayDirty = true; }
+    if ((event == JoystickEvent::Down || event == JoystickEvent::Right) && testMenuIndex < TEST_MENU_ITEM_COUNT - 1) { ++testMenuIndex; displayDirty = true; }
+    if (event == JoystickEvent::ShortPress) {
+      if (testMenuIndex == 0) enterKeyTest(); else enterPaddleTest();
+    }
+    if (event == JoystickEvent::LongPress) { appState = AppState::MainMenu; displayDirty = true; }
   } else if (appState == AppState::TrainingSelection) {
     if ((event == JoystickEvent::Up || event == JoystickEvent::Left) && selectionIndex > 0) { --selectionIndex; displayDirty = true; }
     if ((event == JoystickEvent::Down || event == JoystickEvent::Right) && selectionIndex < 2) { ++selectionIndex; displayDirty = true; }
@@ -410,6 +428,70 @@ void chooseTrainingTarget() {
 
 void showTrainingLine(const char *top, const char *bottom) {
   lcd.clear(); lcd.setCursor(0, 0); printPadded(top); lcd.setCursor(0, 1); printPadded(bottom);
+}
+
+// Ecrane de diagnostic hardware: afiseaza in timp real starea cheii/padelelor,
+// utile la verificarea cablajului. Sidetone-ul ramane cel produs deja de
+// updateStraightKey()/updatePaddle(), care functioneaza in orice stare in
+// afara de Training/WaitAnswer.
+void enterKeyTest() {
+  appState = AppState::KeyTest;
+  soundOff();
+  lastKeyTestDown = digitalRead(PIN_STRAIGHT_KEY) == LOW;
+  showTrainingLine("Test Cheie CW", lastKeyTestDown ? "Stare: APASAT" : "Stare: liber");
+  displayDirty = false;
+}
+
+void updateKeyTest(JoystickEvent event) {
+  if (appState != AppState::KeyTest) return;
+  if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) {
+    soundOff();
+    appState = AppState::TestMenu;
+    displayDirty = true;
+    return;
+  }
+  bool down = digitalRead(PIN_STRAIGHT_KEY) == LOW;
+  if (down != lastKeyTestDown) {
+    lastKeyTestDown = down;
+    lcd.setCursor(0, 1);
+    printPadded(down ? "Stare: APASAT" : "Stare: liber");
+  }
+}
+
+void formatPaddleTestStatus(char *destination, size_t destinationSize) {
+  snprintf(destination, destinationSize, "DIT:%s DAH:%s",
+    lastPaddleTestDit ? "JOS" : "sus", lastPaddleTestDah ? "JOS" : "sus");
+}
+
+void enterPaddleTest() {
+  appState = AppState::PaddleTest;
+  soundOff();
+  lastPaddleTestDit = digitalRead(PIN_PADDLE_DIT) == LOW;
+  lastPaddleTestDah = digitalRead(PIN_PADDLE_DAH) == LOW;
+  char status[17];
+  formatPaddleTestStatus(status, sizeof(status));
+  showTrainingLine("Test Paddle CW", status);
+  displayDirty = false;
+}
+
+void updatePaddleTest(JoystickEvent event) {
+  if (appState != AppState::PaddleTest) return;
+  if (event == JoystickEvent::ShortPress || event == JoystickEvent::LongPress) {
+    soundOff();
+    appState = AppState::TestMenu;
+    displayDirty = true;
+    return;
+  }
+  bool dit = digitalRead(PIN_PADDLE_DIT) == LOW;
+  bool dah = digitalRead(PIN_PADDLE_DAH) == LOW;
+  if (dit != lastPaddleTestDit || dah != lastPaddleTestDah) {
+    lastPaddleTestDit = dit;
+    lastPaddleTestDah = dah;
+    char status[17];
+    formatPaddleTestStatus(status, sizeof(status));
+    lcd.setCursor(0, 1);
+    printPadded(status);
+  }
 }
 
 // Construieste o fereastra de maximum 16 coloane din modelul Morse. Fiecare
@@ -527,6 +609,8 @@ void loop() {
   updatePaddle();
   updateMenu(event);
   updateTraining(event);
+  updateKeyTest(event);
+  updatePaddleTest(event);
   updateMorseOutput();
   renderMenu();
 }
