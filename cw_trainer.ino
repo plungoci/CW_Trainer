@@ -735,10 +735,16 @@ void loop() {
   updateExistingKeyButton();
   updateStraightKey();
   updatePaddle();
+  AppState stateBeforeMenu = appState;
   updateMenu(event);
-  updateTraining(event);
-  updateKeyTest(event);
-  updatePaddleTest(event);
+  // Daca updateMenu() tocmai a schimbat ecranul (ex: ShortPress a deschis
+  // Test Cheie CW din submeniu), acelasi eveniment nu se mai transmite mai
+  // departe: altfel ecranul nou l-ar citi imediat ca semnal de iesire, in
+  // aceeasi bucla in care tocmai a fost deschis.
+  JoystickEvent activeScreenEvent = (appState != stateBeforeMenu) ? JoystickEvent::None : event;
+  updateTraining(activeScreenEvent);
+  updateKeyTest(activeScreenEvent);
+  updatePaddleTest(activeScreenEvent);
   updateMorseOutput();
   renderMenu();
 }
